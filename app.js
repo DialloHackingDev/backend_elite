@@ -27,6 +27,9 @@ app.get('/api/health', (req, res) => {
 // Montage des routes
 app.use('/api/auth', authRoutes);
 app.use('/api/agents', agentRoutes);
+app.use('/api/births', require('./routes/birth.routes'));
+app.use('/api/verify', require('./routes/verify.routes'));
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
 
 // Middleware global de gestion des erreurs (à intégrer plus tard)
 app.use((err, req, res, next) => {
