@@ -45,3 +45,15 @@ coverage/
 
 # BullMQ / Redis (si cache local)
 dump.rdb
+
+# Blockchain (Hardhat)
+/blockchain/artifacts/
+/blockchain/cache/
+/blockchain/typechain-types/
+/blockchain/coverage/
+/blockchain/.openzeppelin/
+
+# Fichiers de données de test
+/tests/*.csv
+/tests/*.json
+!/tests/load-test.yml

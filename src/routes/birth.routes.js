@@ -26,4 +26,19 @@ router.post(
   birthController.syncBirths
 );
 
+// Administration des naissances tardives
+router.get(
+  '/pending',
+  authMiddleware,
+  rbacMiddleware(['ADMIN', 'MINISTRY']),
+  birthController.getPendingBirths
+);
+
+router.patch(
+  '/:id/validate',
+  authMiddleware,
+  rbacMiddleware(['ADMIN']),
+  birthController.validateBirth
+);
+
 module.exports = router;

@@ -56,3 +56,30 @@ exports.syncBirths = async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+exports.getPendingBirths = async (req, res) => {
+  try {
+    const pending = await birthService.getPendingRegistrations();
+    res.status(200).json({ status: 'success', data: pending });
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.validateBirth = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { decision } = req.body;
+    const adminId = req.user.id;
+
+    const result = await birthService.validateLateRegistration(id, decision, adminId);
+
+    res.status(200).json({
+      status: 'success',
+      message: `L'acte a été ${decision === 'APPROVED' ? 'approuvé et enregistré sur la blockchain' : 'rejeté'}.`,
+      data: result
+    });
+  } catch (error) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};

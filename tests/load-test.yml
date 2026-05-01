@@ -1,0 +1,41 @@
+config:
+  target: "http://localhost:3000/api"
+  phases:
+    - duration: 60
+      arrivalRate: 10 # 10 nouveaux agents par seconde
+      name: "Charge progressive"
+    - duration: 300
+      arrivalRate: 50 # 50 requêtes/sec (simule nos 500 agents actifs)
+      name: "Pointe de charge"
+  payload:
+    path: "agents_test_data.csv"
+    fields:
+      - "nationalAgentId"
+      - "password"
+
+scenarios:
+  - name: "Flux Agent: Login + Enregistrement"
+    flow:
+      - post:
+          url: "/auth/login"
+          json:
+            nationalAgentId: "{{ nationalAgentId }}"
+            password: "{{ password }}"
+          capture:
+            - json: "$.data.accessToken"
+              as: "token"
+      - think: 2
+      - post:
+          url: "/births"
+          headers:
+            Authorization: "Bearer {{ token }}"
+          json:
+            childFirstName: "Test"
+            childLastName: "Performance"
+            childGender: "M"
+            dateOfBirth: "2026-05-01T10:00:00Z"
+            placeOfBirth: "Conakry"
+            motherFullName: "Maman Test"
+            motherDob: "1990-01-01T00:00:00Z"
+            motherPrefecture: "Conakry"
+            establishmentCode: "IGN-001"

@@ -3,10 +3,12 @@ const { generateNationalId, generatePayloadHash } = require('../utils/hash.util'
 const { generateBirthCertificatePDF } = require('../utils/pdf.util');
 const { uploadToIPFS } = require('../utils/ipfs.util');
 const { registerBirthOnChain } = require('../blockchain/birthRegistry');
+const { enqueueNotificationJob } = require('../jobs/sms.queue');
+const { generateQRCodeDataURL } = require('../utils/qr.util');
 
 class BirthService {
   /**
-   * Enregistre une nouvelle naissance (Flux complet)
+   * Enregistre une nouvelle naissance (Flux complet ou partiel si tardif)
    */
   async registerBirth(payload, agentId) {
     // 1. Vérification de l'établissement
@@ -21,49 +23,19 @@ class BirthService {
     // 2. Génération ID National (GN-AAAA-PREF-XXXX)
     const nationalId = generateNationalId(establishment.prefecture);
 
-    // 3. Normalisation & Hachage
-    // Le payload pour le hash inclut l'ID et exclut les champs sensibles chiffrés si nécessaire
-    const payloadToHash = {
-      nationalId,
-      childFirstName: payload.childFirstName,
-      childLastName: payload.childLastName,
-      childGender: payload.childGender,
-      dateOfBirth: payload.dateOfBirth,
-      placeOfBirth: payload.placeOfBirth,
-      motherFullName: payload.motherFullName,
-      fatherFullName: payload.fatherFullName || '',
-      establishmentCode: payload.establishmentCode
-    };
-
-    const hash = generatePayloadHash(payloadToHash);
-
-    // 4. Génération du QR Code anti-falsification (HMAC)
-    const { generateQRCodeDataURL } = require('../utils/qr.util');
-    const qrCodeDataURL = await generateQRCodeDataURL(nationalId, hash);
-
-    // 5. Génération du PDF
-    // On ajoute l'ID, le hash et le QRCode au payload pour le rendu PDF
-    const pdfBuffer = await generateBirthCertificatePDF({
-      ...payload,
-      nationalId,
-      blockchainHash: hash,
-      qrCodeDataURL
-    });
-
-    // 5. Upload sur IPFS
-    const ipfsCid = await uploadToIPFS(pdfBuffer, `${nationalId}.pdf`);
-
-    // 6. Inscription sur la Blockchain
-    const txHash = await registerBirthOnChain(nationalId, hash);
-
-    // 7. Sauvegarde finale en BDD
-    // Note : motherCni et fatherCni devraient être chiffrés avec crypto.util en production
+    // 3. Sauvegarde initiale en BDD (Statut PENDING par défaut)
+    const validationStatus = payload.isLateRegistration ? 'PENDING' : 'APPROVED';
+    
     const newBirth = await prisma.birth.create({
       data: {
         nationalId,
-        blockchainHash: txHash, // On stocke la transaction
-        ipfsCid,
-        status: 'REGISTERED',
+        status: 'PENDING_SYNC',
+        validationStatus,
+        isLateRegistration: payload.isLateRegistration || false,
+        witness1FullName: payload.witness1FullName,
+        witness1Cni: payload.witness1Cni,
+        witness2FullName: payload.witness2FullName,
+        witness2Cni: payload.witness2Cni,
         childFirstName: payload.childFirstName,
         childLastName: payload.childLastName,
         childGender: payload.childGender,
@@ -83,20 +55,38 @@ class BirthService {
       }
     });
 
-    // 8. Notification Asynchrone (Twilio WhatsApp/SMS)
-    if (payload.parentPhoneNumber) {
-      const { enqueueNotificationJob } = require('../jobs/sms.queue');
-      // On envoie le job dans Redis sans bloquer la réponse de l'API
-      await enqueueNotificationJob(
-        payload.parentPhoneNumber,
-        payload.childFirstName,
-        nationalId,
-        ipfsCid,
-        true // true = préférer WhatsApp
-      );
+    // 4. Si c'est un enregistrement normal, on envoie en arrière-plan pour finalisation
+    if (validationStatus === 'APPROVED') {
+      const { enqueueSyncJob } = require('../jobs/sync.queue');
+      await enqueueSyncJob(newBirth.id, payload.parentPhoneNumber);
     }
 
     return newBirth;
+  }
+
+  /**
+   * Approuver ou rejeter un enregistrement tardif (ADMIN)
+   */
+  async validateLateRegistration(birthId, decision, adminId) {
+    if (!['APPROVED', 'REJECTED'].includes(decision)) {
+      throw new Error("Décision invalide (APPROVED ou REJECTED)");
+    }
+
+    if (decision === 'REJECTED') {
+      return await prisma.birth.update({
+        where: { id: birthId },
+        data: { validationStatus: 'REJECTED', status: 'FAILED' }
+      });
+    }
+
+    // Si approuvé, on lance la finalisation en arrière-plan
+    const { enqueueSyncJob } = require('../jobs/sync.queue');
+    await enqueueSyncJob(birthId);
+
+    return await prisma.birth.update({
+      where: { id: birthId },
+      data: { validationStatus: 'APPROVED', status: 'PENDING_SYNC' }
+    });
   }
 
   async getBirthByNationalId(nationalId) {
@@ -110,6 +100,13 @@ class BirthService {
 
     if (!birth) throw new Error('Acte introuvable');
     return birth;
+  }
+
+  async getPendingRegistrations() {
+    return await prisma.birth.findMany({
+      where: { validationStatus: 'PENDING' },
+      include: { establishment: true, agent: true }
+    });
   }
 }
 

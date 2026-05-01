@@ -50,12 +50,27 @@ model Establishment {
   births          Birth[]
 }
 
+enum ValidationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+
 model Birth {
   id              String   @id @default(uuid())
   nationalId      String   @unique // GN-AAAA-PREF-XXXXXXX
   blockchainHash  String?  @unique
   ipfsCid         String?  // PDF de l'acte
   status          String   @default("PENDING_SYNC") // PENDING_SYNC, REGISTERED, FAILED
+  
+  // Enregistrement tardif
+  isLateRegistration Boolean @default(false)
+  witness1FullName   String?
+  witness1Cni        String? // Chiffré en AES-256
+  witness2FullName   String?
+  witness2Cni        String? // Chiffré en AES-256
+  validationStatus   ValidationStatus @default(APPROVED)
 
   // Enfant
   childFirstName  String
@@ -89,6 +104,11 @@ model Birth {
   updatedAt       DateTime @updatedAt
   
   verifications   Verification[]
+
+  @@index([nationalId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([validationStatus])
 }
 
 model Verification {

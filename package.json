@@ -32,8 +32,10 @@
     "qrcode": "^1.5.4",
     "redis": "^5.12.1",
     "speakeasy": "^2.0.0",
+    "swagger-ui-express": "^5.0.1",
     "twilio": "^6.0.0",
-    "winston": "^3.19.0"
+    "winston": "^3.19.0",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "eslint": "^10.2.1",

@@ -1,4 +1,5 @@
 require('dotenv').config();
+process.env.UV_THREADPOOL_SIZE = 64; // Crucial pour paralléliser bcrypt et les accès DB
 const app = require('./app');
 const prisma = require('./config/database');
 

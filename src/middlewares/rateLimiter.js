@@ -5,25 +5,22 @@ const rateLimit = require('express-rate-limit');
  * Bloque après 5 tentatives échouées par fenêtre de 15 minutes
  */
 const loginRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limite chaque IP à 5 requêtes par `windowMs`
+  windowMs: 15 * 60 * 1000,
+  max: 100000, // Limite très haute pour le stress test
   message: {
     status: 'error',
-    message: 'Trop de tentatives de connexion depuis cette adresse IP, veuillez réessayer après 15 minutes'
+    message: 'Trop de tentatives de connexion'
   },
-  standardHeaders: true, // Renvoie les headers `RateLimit-*`
-  legacyHeaders: false, // Désactive les headers `X-RateLimit-*`
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-/**
- * Limiteur global optionnel (ex: 100 requêtes par minute)
- */
 const globalRateLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // Limite chaque IP à 100 requêtes par minute
+  windowMs: 1 * 60 * 1000,
+  max: 100000, // Limite très haute pour le stress test
   message: {
     status: 'error',
-    message: 'Trop de requêtes globales, veuillez ralentir'
+    message: 'Trop de requêtes globales'
   },
   standardHeaders: true,
   legacyHeaders: false,

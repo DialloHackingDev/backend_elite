@@ -1,0 +1,175 @@
+openapi: 3.0.0
+info:
+  title: NaissanceChain API
+  description: API de gestion décentralisée des naissances en Guinée utilisant la Blockchain et IPFS.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000/api
+    description: Serveur de développement
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    Birth:
+      type: object
+      required:
+        - childFirstName
+        - childLastName
+        - childGender
+        - dateOfBirth
+        - placeOfBirth
+        - motherFullName
+        - motherDob
+        - motherPrefecture
+        - establishmentCode
+      properties:
+        childFirstName: { type: string, example: "Mamadou" }
+        childLastName: { type: string, example: "Diallo" }
+        childGender: { type: string, enum: [M, F], example: "M" }
+        dateOfBirth: { type: string, format: date-time }
+        placeOfBirth: { type: string, example: "Conakry" }
+        motherFullName: { type: string, example: "Mariama Camara" }
+        motherDob: { type: string, format: date-time }
+        motherPrefecture: { type: string, example: "Conakry" }
+        establishmentCode: { type: string, example: "IGN-001" }
+        isLateRegistration: { type: boolean, default: false }
+        witness1FullName: { type: string }
+        witness1Cni: { type: string }
+        witness2FullName: { type: string }
+        witness2Cni: { type: string }
+        parentPhoneNumber: { type: string, example: "+224621000000" }
+
+paths:
+  /auth/login:
+    post:
+      summary: Connexion d'un agent
+      tags: [Authentification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nationalAgentId: { type: string, example: "AGENT-0001" }
+                password: { type: string, example: "password123" }
+      responses:
+        200:
+          description: Succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: "success" }
+                  data:
+                    type: object
+                    properties:
+                      accessToken: { type: string }
+                      refreshToken: { type: string }
+
+  /auth/setup-2fa:
+    post:
+      summary: Générer un secret 2FA (QR Code)
+      tags: [Authentification]
+      security: [{ bearerAuth: [] }]
+      responses:
+        200: { description: Succès }
+
+  /auth/verify-2fa:
+    post:
+      summary: Activer/Vérifier la 2FA
+      tags: [Authentification]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string, example: "123456" }
+      responses:
+        200: { description: Succès }
+
+  /births:
+    post:
+      summary: Enregistrement d'une naissance (Asynchrone via BullMQ)
+      tags: [Naissances]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Birth'
+      responses:
+        201: { description: Mis en file d'attente }
+
+  /births/{nationalId}:
+    get:
+      summary: Consulter un acte via son ID national
+      tags: [Naissances]
+      parameters:
+        - name: nationalId
+          in: path
+          required: true
+          schema: { type: string, example: "GN-2026-CONA-0000001" }
+      responses:
+        200: { description: Succès }
+
+  /births/pending:
+    get:
+      summary: Liste des naissances tardives en attente (ADMIN)
+      tags: [Administration]
+      security: [{ bearerAuth: [] }]
+      responses:
+        200: { description: Succès }
+
+  /births/{id}/validate:
+    patch:
+      summary: Approuver ou rejeter un acte tardif (ADMIN)
+      tags: [Administration]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision: { type: string, enum: [APPROVED, REJECTED] }
+      responses:
+        200: { description: Succès }
+
+  /dashboard/stats:
+    get:
+      summary: Statistiques globales du système (ADMIN)
+      tags: [Dashboard]
+      security: [{ bearerAuth: [] }]
+      responses:
+        200: { description: Succès }
+
+  /verify/qr:
+    post:
+      summary: Vérification cryptographique via QR Code
+      tags: [Vérification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                qrPayload: { type: string }
+                verifierType: { type: string, enum: [SCHOOL, HOSPITAL, COURT, PUBLIC] }
+      responses:
+        200: { description: Valide }
