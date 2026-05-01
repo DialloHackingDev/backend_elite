@@ -1,0 +1,47 @@
+# Dépendances Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Variables d'environnement
+.env
+.env.test
+.env.production
+.env.local
+
+# Générés par Prisma
+/prisma/generated/
+/src/generated/prisma/
+*.db
+*.db-journal
+
+# Fichiers de log
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fichiers de build & tests
+dist/
+build/
+coverage/
+.nyc_output/
+
+# Outils système et éditeurs
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Fichiers de cache (TypeScript, ESLint, Nodemon, etc.)
+.tsbuildinfo
+.eslintcache
+.nodemon.json
+
+# BullMQ / Redis (si cache local)
+dump.rdb

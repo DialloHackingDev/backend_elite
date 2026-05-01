@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  AGENT
+  ADMIN
+  MINISTRY
+  JUSTICE
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model Agent {
+  id                    String   @id @default(uuid())
+  nationalAgentId       String   @unique
+  firstName             String
+  lastName              String
+  role                  Role     @default(AGENT)
+  status                Status   @default(ACTIVE)
+  prefectureAssignment  String
+  passwordHash          String
+  twoFactorSecret       String?  // Chiffré en AES-256
+  twoFactorEnabled      Boolean  @default(false)
+  lastLogin             DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  births                Birth[]
+}
+
+model Establishment {
+  id              String   @id @default(uuid())
+  code            String   @unique
+  name            String
+  type            String   // MATERNITY, HEALTH_POST, etc.
+  prefecture      String
+  subPrefecture   String
+  latitude        Float?
+  longitude       Float?
+
+  births          Birth[]
+}
+
+model Birth {
+  id              String   @id @default(uuid())
+  nationalId      String   @unique // GN-AAAA-PREF-XXXXXXX
+  blockchainHash  String?  @unique
+  ipfsCid         String?  // PDF de l'acte
+  status          String   @default("PENDING_SYNC") // PENDING_SYNC, REGISTERED, FAILED
+
+  // Enfant
+  childFirstName  String
+  childLastName   String
+  childGender     String
+  dateOfBirth     DateTime
+  timeOfBirth     String?
+  placeOfBirth    String
+
+  // Mère
+  motherFullName  String
+  motherDob       DateTime
+  motherCni       String?  // Chiffré en AES-256
+  motherPrefecture String
+
+  // Père
+  fatherFullName  String?
+  fatherDob       DateTime?
+  fatherCni       String?  // Chiffré en AES-256
+
+  // Relation
+  agentId         String
+  agent           Agent          @relation(fields: [agentId], references: [id])
+  
+  establishmentId String
+  establishment   Establishment  @relation(fields: [establishmentId], references: [id])
+  
+  gpsCoordinates  String? // Point de saisie
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  verifications   Verification[]
+}
+
+model Verification {
+  id              String   @id @default(uuid())
+  birthId         String
+  birth           Birth    @relation(fields: [birthId], references: [id])
+  verifiedAt      DateTime @default(now())
+  ipAddress       String?
+  verifierType    String   // SCHOOL, HOSPITAL, COURT, PUBLIC
+  result          String   // VALID, INVALID
+}
