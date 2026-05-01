@@ -93,6 +93,17 @@ Interface publique pour les institutions (Écoles, Hôpitaux, Ambassades).
   ```
 - **Réponse** : Confirme si l'acte est valide, avec la preuve cryptographique (Hash Blockchain).
 
+#### `POST /api/verify/id`
+- **Utilisation** : Vérification manuelle via l'Identifiant National (ex: `GN-2026-CONA-0000001`).
+- **Corps** :
+  ```json
+  {
+    "nationalId": "GN-2026-COY-4920481",
+    "verifierType": "HOSPITAL"
+  }
+  ```
+- **Réponse** : Retourne les détails de l'acte et son empreinte blockchain si authentique.
+
 ---
 
 ## 📊 5. Administration (Web Admin)

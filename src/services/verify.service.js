@@ -56,6 +56,42 @@ class VerifyService {
   }
 
   /**
+   * Vérifie un acte via son Identifiant National unique (Saisie manuelle)
+   */
+  async verifyFromNationalId(nationalId, ipAddress, verifierType) {
+    const birth = await prisma.birth.findUnique({
+      where: { nationalId },
+      include: { establishment: true }
+    });
+
+    if (!birth) {
+      return { isValid: false, reason: 'Aucun acte trouvé avec cet identifiant national' };
+    }
+
+    // Un acte est considéré "Authentique" s'il a un hash blockchain valide
+    if (!birth.blockchainHash) {
+      await this.logVerification(birth.id, ipAddress, verifierType, 'NOT_SYNCED');
+      return { isValid: false, reason: 'Cet acte n\'est pas encore certifié sur la blockchain' };
+    }
+
+    await this.logVerification(birth.id, ipAddress, verifierType, 'VALID');
+
+    return {
+      isValid: true,
+      data: {
+        nationalId: birth.nationalId,
+        childFirstName: birth.childFirstName,
+        childLastName: birth.childLastName,
+        dateOfBirth: birth.dateOfBirth,
+        placeOfBirth: birth.placeOfBirth,
+        establishment: birth.establishment.name,
+        blockchainHash: birth.blockchainHash,
+        ipfsUrl: birth.ipfsCid ? `https://gateway.pinata.cloud/ipfs/${birth.ipfsCid}` : null
+      }
+    };
+  }
+
+  /**
    * Audit: Log la tentative de vérification
    */
   async logVerification(birthIdentifier, ipAddress, verifierType, result) {

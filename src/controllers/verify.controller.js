@@ -27,3 +27,31 @@ exports.verifyQR = async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 };
+
+exports.verifyId = async (req, res) => {
+  try {
+    const { nationalId, verifierType } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+
+    if (!nationalId) {
+      return res.status(400).json({ status: 'error', message: 'L\'identifiant national est requis' });
+    }
+
+    const verificationResult = await verifyService.verifyFromNationalId(nationalId, ipAddress, verifierType);
+
+    if (verificationResult.isValid) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'Acte authentique et certifié',
+        data: verificationResult.data
+      });
+    } else {
+      return res.status(404).json({
+        status: 'error',
+        message: verificationResult.reason
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};

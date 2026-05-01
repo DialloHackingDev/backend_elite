@@ -173,3 +173,19 @@ paths:
                 verifierType: { type: string, enum: [SCHOOL, HOSPITAL, COURT, PUBLIC] }
       responses:
         200: { description: Valide }
+
+  /verify/id:
+    post:
+      summary: Vérification manuelle via Identifiant National
+      tags: [Vérification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nationalId: { type: string, example: "GN-2026-COY-4920481" }
+                verifierType: { type: string, enum: [SCHOOL, HOSPITAL, COURT, PUBLIC] }
+      responses:
+        200: { description: Valide }
