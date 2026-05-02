@@ -92,6 +92,38 @@ class AuthService {
 
     return true;
   }
+  async register(payload) {
+    const { nationalId, firstName, lastName, password, prefecture } = payload;
+
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await prisma.agent.findUnique({
+      where: { nationalAgentId: nationalId }
+    });
+
+    if (existingUser) {
+      throw new Error('Un utilisateur avec ce numéro national existe déjà');
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const user = await prisma.agent.create({
+      data: {
+        nationalAgentId: nationalId,
+        firstName,
+        lastName,
+        passwordHash,
+        role: 'CITIZEN',
+        prefectureAssignment: prefecture, // Pour un citoyen, c'est sa préfecture de résidence
+        status: 'ACTIVE'
+      }
+    });
+
+    return {
+      id: user.id,
+      nationalId: user.nationalAgentId,
+      role: user.role
+    };
+  }
 }
 
 module.exports = new AuthService();

@@ -39,12 +39,15 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'NaissanceChain API is running' });
 });
 
+const citizenRoutes = require('./routes/citizen.routes');
+
 // Montage des routes
 app.use('/api/auth', authRoutes);
 app.use('/api/agents', agentRoutes);
-app.use('/api/births',birthRoutes );
-app.use('/api/verify',verifyRoutes );
+app.use('/api/births', birthRoutes);
+app.use('/api/verify', verifyRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/citizen', citizenRoutes);
 
 // Middleware global de gestion des erreurs (à intégrer plus tard)
 app.use((err, req, res, next) => {

@@ -51,3 +51,22 @@ exports.verify2FA = async (req, res, next) => {
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
+
+exports.register = async (req, res, next) => {
+  try {
+    const { nationalId, firstName, lastName, password, prefecture } = req.body;
+    
+    if (!nationalId || !firstName || !lastName || !password) {
+      return res.status(400).json({ status: 'error', message: 'Tous les champs sont requis' });
+    }
+
+    const data = await authService.register(req.body);
+    res.status(201).json({
+      status: 'success',
+      message: 'Compte citoyen créé avec succès',
+      data
+    });
+  } catch (error) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
