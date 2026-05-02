@@ -11,8 +11,9 @@ async function startServer() {
     await prisma.$connect();
     console.log('✅ Connecté à la base de données PostgreSQL.');
 
-    app.listen(PORT, () => {
-      console.log(`🚀 Serveur en écoute sur le port ${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Serveur en écoute sur http://0.0.0.0:${PORT}`);
+      console.log(`📱 Pour mobile: http://192.168.1.107:${PORT}/api`);
     });
   } catch (error) {
     console.error('❌ Erreur de démarrage du serveur:', error);
