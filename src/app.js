@@ -5,6 +5,12 @@ const morgan = require('morgan');
 
 const app = express();
 
+// ⚠️ DEBUG: Log toutes les requêtes AVANT tout middleware
+app.use((req, res, next) => {
+  console.log(`[HTTP] ${new Date().toISOString()} ${req.method} ${req.path}  - Headers:`, req.headers.host);
+  next();
+});
+
 // Middlewares de sécurité et utilitaires
 app.use(helmet());
 app.use(cors());

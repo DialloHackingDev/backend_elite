@@ -121,3 +121,17 @@ model Verification {
   verifierType    String   // SCHOOL, HOSPITAL, COURT, PUBLIC
   result          String   // VALID, INVALID
 }
+
+model Citizen {
+  id           String   @id @default(uuid())
+  fullName     String
+  phoneNumber  String   @unique
+  passwordHash String
+  cniNumber    String   @unique
+  prefecture   String   @default("Conakry")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([phoneNumber])
+  @@index([cniNumber])
+}

@@ -59,13 +59,21 @@ class VerifyService {
    * Vérifie un acte via son Identifiant National unique (Saisie manuelle)
    */
   async verifyFromNationalId(nationalId, ipAddress, verifierType) {
-    const birth = await prisma.birth.findUnique({
-      where: { nationalId },
-      include: { establishment: true }
-    });
+    console.log(`[VerifyService] Recherche acte: ${nationalId}`);
+    try {
+      const birth = await prisma.birth.findUnique({
+        where: { nationalId },
+        include: { establishment: true }
+      });
 
-    if (!birth) {
-      return { isValid: false, reason: 'Aucun acte trouvé avec cet identifiant national' };
+      console.log(`[VerifyService] Résultat recherche:`, birth ? 'Trouvé' : 'Non trouvé');
+
+      if (!birth) {
+        return { isValid: false, reason: 'Aucun acte trouvé avec cet identifiant national' };
+      }
+    } catch (error) {
+      console.error(`[VerifyService] Erreur Prisma:`, error.message);
+      throw error;
     }
 
     // Un acte est considéré "Authentique" s'il a un hash blockchain valide
