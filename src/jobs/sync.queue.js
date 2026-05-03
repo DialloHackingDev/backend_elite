@@ -1,51 +1,50 @@
 const { Queue, Worker } = require('bullmq');
-const connection = require('../config/redis');
-const prisma = require('../config/database');
-const { generatePayloadHash } = require('../utils/hash.util');
-const { generateQRCodeDataURL } = require('../utils/qr.util');
+const connection  = require('../config/redis');
+const prisma      = require('../config/database');
+const { generatePayloadHash }        = require('../utils/hash.util');
+const { generateQRCodeDataURL }      = require('../utils/qr.util');
 const { generateBirthCertificatePDF } = require('../utils/pdf.util');
-const { uploadToIPFS } = require('../utils/ipfs.util');
-const { registerBirthOnChain } = require('../blockchain/birthRegistry');
-const { enqueueNotificationJob } = require('./sms.queue');
+const { uploadToIPFS }               = require('../utils/ipfs.util');
+const { registerBirthOnChain }       = require('../blockchain/birthRegistry');
+const { enqueueNotificationJob }     = require('./sms.queue');
 
-const SYNC_QUEUE_NAME = 'birth-sync';
-
-// Check if Redis is available (mock connection)
+const QUEUE_NAME      = 'birth-sync';
 const isRedisAvailable = connection.status !== 'mock';
 
+// ── Queue ──────────────────────────────────────────────────────────────────────
 let syncQueue;
 if (isRedisAvailable) {
-  syncQueue = new Queue(SYNC_QUEUE_NAME, { connection });
+  syncQueue = new Queue(QUEUE_NAME, { connection });
 }
 
-/**
- * Fonction de finalisation synchrone (utilisée sans Redis)
- */
+// ── Logique de finalisation ────────────────────────────────────────────────────
 async function finalizeBirthSync(birthId, parentPhoneNumber) {
-  console.log(`[Sync] Début de la finalisation pour l'acte ID: ${birthId}`);
+  console.log(`[Sync] Finalisation acte: ${birthId}`);
 
   const birth = await prisma.birth.findUnique({
     where: { id: birthId },
-    include: { establishment: true }
+    include: { establishment: true },
   });
 
-  if (!birth) throw new Error("Acte introuvable pour la synchronisation");
-  if (birth.status === 'REGISTERED') return;
+  if (!birth) throw new Error('Acte introuvable');
+  if (birth.status === 'REGISTERED') {
+    console.log(`[Sync] Acte ${birthId} déjà enregistré, skip.`);
+    return;
+  }
 
   try {
-    // 1. Normalisation & Hachage
-    const payloadToHash = {
-      nationalId: birth.nationalId,
-      childFirstName: birth.childFirstName,
-      childLastName: birth.childLastName,
-      childGender: birth.childGender,
-      dateOfBirth: birth.dateOfBirth,
-      placeOfBirth: birth.placeOfBirth,
-      motherFullName: birth.motherFullName,
-      fatherFullName: birth.fatherFullName || '',
-      establishmentCode: birth.establishment.code
-    };
-    const hash = generatePayloadHash(payloadToHash);
+    // 1. Hash SHA-256 du payload
+    const hash = generatePayloadHash({
+      nationalId:       birth.nationalId,
+      childFirstName:   birth.childFirstName,
+      childLastName:    birth.childLastName,
+      childGender:      birth.childGender,
+      dateOfBirth:      birth.dateOfBirth,
+      placeOfBirth:     birth.placeOfBirth,
+      motherFullName:   birth.motherFullName,
+      fatherFullName:   birth.fatherFullName || '',
+      establishmentCode: birth.establishment.code,
+    });
 
     // 2. QR Code
     const qrCodeDataURL = await generateQRCodeDataURL(birth.nationalId, hash);
@@ -54,33 +53,30 @@ async function finalizeBirthSync(birthId, parentPhoneNumber) {
     const pdfBuffer = await generateBirthCertificatePDF({
       ...birth,
       blockchainHash: hash,
-      qrCodeDataURL
+      qrCodeDataURL,
     });
 
-    // 4. IPFS (Optionnel: on peut mocker pour les tests de charge si Pinata limite)
-    let ipfsCid = 'MOCK_CID_' + Date.now();
+    // 4. IPFS — mock si pas de JWT Pinata
+    let ipfsCid = `MOCK_CID_${Date.now()}`;
     if (process.env.NODE_ENV !== 'test' && process.env.PINATA_JWT) {
       ipfsCid = await uploadToIPFS(pdfBuffer, `${birth.nationalId}.pdf`);
     }
 
-    // 5. Blockchain (Optionnel: on peut mocker pour les tests de charge)
-    let txHash = '0x_MOCK_TX_' + Date.now();
-    if (process.env.NODE_ENV !== 'test' && process.env.PRIVATE_KEY) {
-      txHash = await registerBirthOnChain(birth.nationalId, hash);
-    }
+    // 5. Blockchain — registerBirthOnChain gère lui-même le fallback simulé
+    const txHash = await registerBirthOnChain(birth.nationalId, hash);
 
     // 6. Mise à jour BDD
     await prisma.birth.update({
       where: { id: birthId },
       data: {
-        blockchainHash: txHash,
+        blockchainHash:   txHash,
         ipfsCid,
-        status: 'REGISTERED',
-        validationStatus: 'APPROVED'
-      }
+        status:           'REGISTERED',
+        validationStatus: 'APPROVED',
+      },
     });
 
-    // 7. Notification SMS (Enqueuer un autre job)
+    // 7. Notification SMS (optionnel)
     if (parentPhoneNumber) {
       await enqueueNotificationJob(
         parentPhoneNumber,
@@ -91,63 +87,54 @@ async function finalizeBirthSync(birthId, parentPhoneNumber) {
       );
     }
 
-    console.log(`[Sync] Finalisation réussie pour ${birth.nationalId}`);
+    console.log(`[Sync] ✅ Acte ${birth.nationalId} enregistré (tx: ${txHash.substring(0, 20)}...)`);
   } catch (error) {
-    console.error(`[Sync] Erreur: ${error.message}`);
+    console.error(`[Sync] ❌ Erreur pour ${birthId}:`, error.message);
     await prisma.birth.update({
       where: { id: birthId },
-      data: { status: 'FAILED' }
-    });
-    throw error;
+      data: { status: 'FAILED' },
+    }).catch(() => {}); // ne pas crasher si la BDD est aussi KO
+    throw error; // re-throw pour que BullMQ puisse retry
   }
 }
 
-/**
- * Worker asynchrone pour finaliser l'enregistrement (Hash, PDF, IPFS, Blockchain)
- * Uniquement créé si Redis est disponible
- */
+// ── Worker BullMQ ──────────────────────────────────────────────────────────────
 let syncWorker;
 if (isRedisAvailable) {
   syncWorker = new Worker(
-    SYNC_QUEUE_NAME,
+    QUEUE_NAME,
     async (job) => {
       const { birthId, parentPhoneNumber } = job.data;
       await finalizeBirthSync(birthId, parentPhoneNumber);
     },
-    { 
-      connection,
-      concurrency: 5 // Ajustable selon la puissance du serveur
-    }
+    { connection, concurrency: 3 }
   );
+
+  // CRITIQUE : sans ce handler, une erreur dans le worker crash le process Node
+  syncWorker.on('failed', (job, err) => {
+    console.error(`[Sync] Job ${job?.id} échoué (tentative ${job?.attemptsMade}):`, err.message);
+  });
+
+  syncWorker.on('error', (err) => {
+    console.error('[Sync] Erreur worker BullMQ:', err.message);
+  });
 }
 
-/**
- * Ajoute une tâche de synchronisation dans la file
- * Ou exécute immédiatement si Redis n'est pas disponible
- */
+// ── Enqueue ────────────────────────────────────────────────────────────────────
 const enqueueSyncJob = async (birthId, parentPhoneNumber = null) => {
   if (isRedisAvailable && syncQueue) {
-    // Mode avec Redis: ajouter à la file d'attente
-    await syncQueue.add('sync-birth', {
-      birthId,
-      parentPhoneNumber
-    }, {
-      attempts: 5,
-      backoff: { type: 'exponential', delay: 5000 }
-    });
+    await syncQueue.add(
+      'sync-birth',
+      { birthId, parentPhoneNumber },
+      { attempts: 3, backoff: { type: 'exponential', delay: 3000 } }
+    );
   } else {
-    // Mode sans Redis: exécuter immédiatement
-    console.log(`[Sync] Exécution synchrone pour birthId: ${birthId}`);
-    try {
-      await finalizeBirthSync(birthId, parentPhoneNumber);
-    } catch (error) {
-      console.error(`[Sync] Échec de la finalisation synchrone: ${error.message}`);
-    }
+    // Sans Redis : exécution synchrone dans le même process
+    console.log(`[Sync] Mode synchrone pour birthId: ${birthId}`);
+    finalizeBirthSync(birthId, parentPhoneNumber).catch((err) => {
+      console.error(`[Sync] Échec synchrone: ${err.message}`);
+    });
   }
 };
 
-module.exports = {
-  syncQueue,
-  enqueueSyncJob,
-  finalizeBirthSync
-};
+module.exports = { syncQueue, syncWorker, enqueueSyncJob, finalizeBirthSync };

@@ -150,10 +150,12 @@ exports.getMe = async (req, res) => {
           firstName: true,
           lastName: true,
           nationalAgentId: true,
-          email: true,
-          phoneNumber: true,
           role: true,
-          establishmentId: true
+          status: true,
+          prefectureAssignment: true,
+          twoFactorEnabled: true,
+          lastLogin: true,
+          createdAt: true,
         }
       });
     }

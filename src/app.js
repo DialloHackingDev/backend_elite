@@ -33,9 +33,9 @@ const authRoutes = require('./routes/auth.routes');
 const agentRoutes = require('./routes/agent.routes');
 const { globalRateLimiter } = require('./middlewares/rateLimiter');
 
-// Initialisation des Workers (BullMQ)
-require('./jobs/sms.queue');
-require('./jobs/sync.queue');
+// Initialisation des Workers (BullMQ) - Lazy loaded in server.js to avoid early Redis connection
+// require('./jobs/sms.queue');
+// require('./jobs/sync.queue');
 
 // Limiteur de requêtes global
 app.use(globalRateLimiter);
@@ -46,6 +46,7 @@ app.get('/api/health', (req, res) => {
 });
 
 const citizenRoutes = require('./routes/citizen.routes');
+const requestRoutes = require('./routes/request.routes');
 
 // Montage des routes
 app.use('/api/auth', authRoutes);
@@ -54,6 +55,7 @@ app.use('/api/births', birthRoutes);
 app.use('/api/verify', verifyRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/citizen', citizenRoutes);
+app.use('/api/requests', requestRoutes);
 
 // Middleware global de gestion des erreurs (à intégrer plus tard)
 app.use((err, req, res, next) => {

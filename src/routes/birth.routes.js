@@ -6,15 +6,31 @@ const rbacMiddleware = require('../middlewares/rbac.middleware');
 const { validateBody } = require('../middlewares/validation.middleware');
 const { birthSchema } = require('../validations/birth.validation');
 
-// Route publique: Consulter un acte via son numéro
+// Route protégée: Liste des naissances de l'agent connecté (avec pagination)
+router.get(
+  '/',
+  authMiddleware,
+  rbacMiddleware(['AGENT', 'ADMIN', 'MINISTRY']),
+  birthController.getBirths
+);
+
+// Administration des naissances tardives — DOIT être avant /:nationalId
+router.get(
+  '/pending',
+  authMiddleware,
+  rbacMiddleware(['ADMIN', 'MINISTRY']),
+  birthController.getPendingBirths
+);
+
+// Route publique: Consulter un acte via son numéro national
 router.get('/:nationalId', birthController.getBirth);
 
-// Route protégée: Enregistrer un acte (Seuls les Agents ou Superviseurs)
+// Route protégée: Enregistrer un acte
 router.post(
-  '/', 
-  authMiddleware, 
-  rbacMiddleware(['AGENT', 'ADMIN', 'MINISTRY']), 
-  validateBody(birthSchema), 
+  '/',
+  authMiddleware,
+  rbacMiddleware(['AGENT', 'ADMIN', 'MINISTRY']),
+  validateBody(birthSchema),
   birthController.registerBirth
 );
 
@@ -24,14 +40,6 @@ router.post(
   authMiddleware,
   rbacMiddleware(['AGENT', 'ADMIN', 'MINISTRY']),
   birthController.syncBirths
-);
-
-// Administration des naissances tardives
-router.get(
-  '/pending',
-  authMiddleware,
-  rbacMiddleware(['ADMIN', 'MINISTRY']),
-  birthController.getPendingBirths
 );
 
 router.patch(

@@ -132,6 +132,55 @@ model Citizen {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  requests     Request[]
+
   @@index([phoneNumber])
   @@index([cniNumber])
+}
+
+enum RequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+enum RequestType {
+  BIRTH_CERTIFICATE
+  COPY_CERTIFICATE
+  CORRECTION
+}
+
+model Request {
+  id          String   @id @default(uuid())
+  citizenId   String
+  citizen     Citizen  @relation(fields: [citizenId], references: [id])
+  
+  type        RequestType
+  status      RequestStatus @default(PENDING)
+  
+  // Pour demande de certificat
+  birthId     String?
+  childName   String?
+  
+  // Informations de livraison
+  deliveryMethod String @default("DIGITAL") // DIGITAL, PICKUP, MAIL
+  phoneNumber String?
+  email       String?
+  address     String?
+  
+  // Documents requis (JSON)
+  documents   String? // JSON array de documents fournis
+  
+  // Suivi
+  notes       String?
+  processedAt DateTime?
+  processedBy String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([citizenId])
+  @@index([status])
+  @@index([createdAt])
 }
