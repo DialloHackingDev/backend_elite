@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 const SECRET_KEY = process.env.JWT_SECRET;
-const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
+const ACCESS_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 const REFRESH_EXPIRES_IN = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 /**
