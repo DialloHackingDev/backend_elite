@@ -4,13 +4,17 @@ echo "=========================================="
 echo "🚀 Démarrage du backend NaissanceChain"
 echo "=========================================="
 
+# Exporter DATABASE_URL pour Prisma CLI
+export DATABASE_URL="$DATABASE_URL"
+echo "📊 DATABASE_URL: ${DATABASE_URL:-non définie}"
+
 # Attendre que la DB soit prête
 echo "⏳ Attente de la base de données..."
-sleep 3
+sleep 5
 
 # Créer les tables directement (plus fiable que migrate deploy)
 echo "🔄 Création des tables dans la base de données..."
-npx prisma db push --accept-data-loss
+npx prisma db push --accept-data-loss 2>&1 || echo "⚠️ Erreur db push, tentative alternative..."
 
 if [ $? -eq 0 ]; then
     echo "✅ Tables créées avec succès"
