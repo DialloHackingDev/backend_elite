@@ -8,15 +8,14 @@ echo "=========================================="
 echo "⏳ Attente de la base de données..."
 sleep 3
 
-# Exécuter les migrations Prisma
-echo "🔄 Exécution des migrations Prisma..."
-npx prisma migrate deploy
+# Créer les tables directement (plus fiable que migrate deploy)
+echo "🔄 Création des tables dans la base de données..."
+npx prisma db push --accept-data-loss
 
 if [ $? -eq 0 ]; then
-    echo "✅ Migrations appliquées avec succès"
+    echo "✅ Tables créées avec succès"
 else
-    echo "⚠️ Erreur lors des migrations, tentative de reset..."
-    npx prisma migrate reset --force
+    echo "⚠️ Erreur lors de la création des tables"
 fi
 
 # Vérifier la connexion
