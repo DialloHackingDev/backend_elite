@@ -2,7 +2,8 @@ const crypto = require('crypto');
 
 const ALGORITHM = 'aes-256-gcm';
 // Ensure the key is exactly 32 bytes. In production, ENCRYPTION_KEY should be a 64-char hex string (32 bytes).
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex'); 
+const DEFAULT_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY || DEFAULT_KEY, 'hex'); 
 const IV_LENGTH = 16;
 
 /**
