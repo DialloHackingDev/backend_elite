@@ -14,17 +14,17 @@ sleep 5
 
 # Créer les tables directement (plus fiable que migrate deploy)
 echo "🔄 Création des tables dans la base de données..."
-npx prisma db push --accept-data-loss 2>&1 || echo "⚠️ Erreur db push, tentative alternative..."
+npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1 || echo "⚠️ Erreur db push"
 
 if [ $? -eq 0 ]; then
     echo "✅ Tables créées avec succès"
 else
-    echo "⚠️ Erreur lors de la création des tables"
+    echo "⚠️ Erreur lors de la création des tables, mais on continue..."
 fi
 
 # Vérifier la connexion
 echo "🔍 Vérification de la base de données..."
-npx prisma db pull 2>/dev/null || echo "⚠️ Impossible de pull le schéma"
+npx prisma db pull --schema=./prisma/schema.prisma 2>/dev/null || echo "⚠️ Impossible de pull le schéma"
 
 # Démarrer le serveur
 echo "🚀 Démarrage du serveur Node.js..."
