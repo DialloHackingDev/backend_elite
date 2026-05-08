@@ -4,27 +4,35 @@ echo "=========================================="
 echo "🚀 Démarrage du backend NaissanceChain"
 echo "=========================================="
 
-# Exporter DATABASE_URL pour Prisma CLI
-export DATABASE_URL="$DATABASE_URL"
-echo "📊 DATABASE_URL: ${DATABASE_URL:-non définie}"
+# Créer un fichier .env temporaire pour Prisma CLI
+if [ -n "$DATABASE_URL" ]; then
+    echo "DATABASE_URL=$DATABASE_URL" > .env
+    echo "📊 DATABASE_URL configurée"
+else
+    echo "❌ DATABASE_URL non définie !"
+    exit 1
+fi
 
 # Attendre que la DB soit prête
 echo "⏳ Attente de la base de données..."
 sleep 5
 
-# Créer les tables directement (plus fiable que migrate deploy)
-echo "🔄 Création des tables dans la base de données..."
-npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1 || echo "⚠️ Erreur db push"
+# Créer les tables avec les migrations
+echo "🔄 Exécution des migrations Prisma..."
+npx prisma migrate deploy --schema=./prisma/schema.prisma 2>&1
 
 if [ $? -eq 0 ]; then
-    echo "✅ Tables créées avec succès"
+    echo "✅ Migrations appliquées avec succès"
 else
-    echo "⚠️ Erreur lors de la création des tables, mais on continue..."
+    echo "⚠️ Erreur migrations, tentative avec db push..."
+    npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1
 fi
+
+# Supprimer le fichier .env temporaire
+rm -f .env
 
 # Vérifier la connexion
 echo "🔍 Vérification de la base de données..."
-npx prisma db pull --schema=./prisma/schema.prisma 2>/dev/null || echo "⚠️ Impossible de pull le schéma"
 
 # Démarrer le serveur
 echo "🚀 Démarrage du serveur Node.js..."
