@@ -62,3 +62,32 @@ exports.cancelRequest = async (req, res) => {
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
+
+exports.getAllRequests = async (req, res) => {
+  try {
+    const requests = await requestService.getPendingRequests();
+    res.status(200).json({
+      status: 'success',
+      data: requests
+    });
+  } catch (error) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.updateRequestStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+    const agentId = req.user.id;
+    
+    const request = await requestService.processRequest(id, agentId, status, notes);
+    
+    res.status(200).json({
+      status: 'success',
+      data: request
+    });
+  } catch (error) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};

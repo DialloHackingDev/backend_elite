@@ -13,4 +13,8 @@ router.post('/', rbacMiddleware(['CITIZEN', 'ADMIN']), requestController.createR
 router.get('/:id', rbacMiddleware(['CITIZEN', 'ADMIN']), requestController.getRequestDetails);
 router.delete('/:id', rbacMiddleware(['CITIZEN', 'ADMIN']), requestController.cancelRequest);
 
+// Routes admin/agent
+router.get('/pending/all', rbacMiddleware(['ADMIN', 'MINISTRY', 'AGENT']), requestController.getAllRequests);
+router.patch('/:id/status', rbacMiddleware(['ADMIN', 'MINISTRY', 'AGENT']), requestController.updateRequestStatus);
+
 module.exports = router;
