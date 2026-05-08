@@ -5,7 +5,7 @@ const { sendSMS, sendWhatsApp } = require('../utils/sms.util');
 const SMS_QUEUE_NAME = 'birth-notification';
 
 // Check if Redis is available
-const isRedisAvailable = connection.status !== 'mock';
+const isRedisAvailable = connection.isRedisAvailable();
 
 let smsQueue;
 let smsWorker;
@@ -60,7 +60,7 @@ const enqueueNotificationJob = async (phoneNumber, childName, nationalId, ipfsCi
   const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsCid}`;
   const method = preferWhatsApp ? 'WHATSAPP' : 'SMS';
   
-  if (isRedisAvailable && smsQueue) {
+  if (connection.isRedisAvailable() && smsQueue) {
     // Mode avec Redis
     await smsQueue.add('send-notification', {
       phoneNumber,

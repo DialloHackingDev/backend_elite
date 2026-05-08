@@ -91,6 +91,44 @@ class AgentService {
     });
     return agent;
   }
+
+  async updateAgent(id, data) {
+    const { password, ...otherData } = data;
+    
+    const updateData = { ...otherData };
+    
+    if (password && password.length > 0) {
+      const saltRounds = 12;
+      updateData.passwordHash = await bcrypt.hash(password, saltRounds);
+    }
+
+    return await prisma.agent.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        nationalAgentId: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        status: true,
+        prefectureAssignment: true
+      }
+    });
+  }
+
+  async deleteAgent(id) {
+    // Vérifier s'il a des naissances liées
+    const birthsCount = await prisma.birth.count({ where: { agentId: id } });
+    if (birthsCount > 0) {
+      // Au lieu de supprimer, on désactive ou on lance une erreur
+      throw new Error(`Impossible de supprimer cet agent car il a ${birthsCount} actes enregistrés. Désactivez-le plutôt.`);
+    }
+
+    return await prisma.agent.delete({
+      where: { id }
+    });
+  }
 }
 
 module.exports = new AgentService();

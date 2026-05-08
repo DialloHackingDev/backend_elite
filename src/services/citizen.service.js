@@ -7,11 +7,11 @@ class CitizenService {
    * Récupère tous les actes de naissance liés au citoyen (en tant que mère ou père)
    */
   async getMyChildrenBirths(citizenId) {
-    const citizen = await prisma.agent.findUnique({
+    const citizen = await prisma.citizen.findUnique({
       where: { id: citizenId }
     });
 
-    if (!citizen || citizen.role !== 'CITIZEN') {
+    if (!citizen) {
       throw new Error('Accès non autorisé');
     }
 
@@ -20,8 +20,8 @@ class CitizenService {
     const births = await prisma.birth.findMany({
       where: {
         OR: [
-          { motherCni: citizen.nationalAgentId },
-          { fatherCni: citizen.nationalAgentId }
+          { motherCni: citizen.cniNumber },
+          { fatherCni: citizen.cniNumber }
         ]
       },
       include: {
@@ -37,7 +37,7 @@ class CitizenService {
    * Génère le PDF pour un acte spécifique appartenant au citoyen
    */
   async getBirthCertificatePDF(citizenId, birthId) {
-    const citizen = await prisma.agent.findUnique({
+    const citizen = await prisma.citizen.findUnique({
       where: { id: citizenId }
     });
 
@@ -49,7 +49,7 @@ class CitizenService {
     if (!birth) throw new Error('Acte introuvable');
 
     // Vérification de parenté
-    if (birth.motherCni !== citizen.nationalAgentId && birth.fatherCni !== citizen.nationalAgentId) {
+    if (birth.motherCni !== citizen.cniNumber && birth.fatherCni !== citizen.cniNumber) {
       throw new Error('Vous n\'êtes pas autorisé à accéder à cet acte');
     }
 

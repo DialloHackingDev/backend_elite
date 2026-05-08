@@ -9,7 +9,7 @@ const { registerBirthOnChain }       = require('../blockchain/birthRegistry');
 const { enqueueNotificationJob }     = require('./sms.queue');
 
 const QUEUE_NAME      = 'birth-sync';
-const isRedisAvailable = connection.status !== 'mock';
+const isRedisAvailable = connection.isRedisAvailable();
 
 // ── Queue ──────────────────────────────────────────────────────────────────────
 let syncQueue;
@@ -122,7 +122,7 @@ if (isRedisAvailable) {
 
 // ── Enqueue ────────────────────────────────────────────────────────────────────
 const enqueueSyncJob = async (birthId, parentPhoneNumber = null) => {
-  if (isRedisAvailable && syncQueue) {
+  if (connection.isRedisAvailable() && syncQueue) {
     await syncQueue.add(
       'sync-birth',
       { birthId, parentPhoneNumber },

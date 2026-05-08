@@ -100,11 +100,15 @@ class VerifyService {
     return {
       isValid: true,
       data: {
+        id: birth.id,
         nationalId: birth.nationalId,
         childFirstName: birth.childFirstName,
         childLastName: birth.childLastName,
+        childGender: birth.childGender,
         dateOfBirth: birth.dateOfBirth,
         placeOfBirth: birth.placeOfBirth,
+        motherFullName: birth.motherFullName,
+        fatherFullName: birth.fatherFullName,
         establishment: birth.establishment?.name ?? '—',
         blockchainHash: birth.blockchainHash,
         ipfsUrl: birth.ipfsCid ? `https://gateway.pinata.cloud/ipfs/${birth.ipfsCid}` : null

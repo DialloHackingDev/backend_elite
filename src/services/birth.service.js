@@ -11,6 +11,14 @@ class BirthService {
    * Enregistre une nouvelle naissance (Flux complet ou partiel si tardif)
    */
   async registerBirth(payload, agentId) {
+    // 0. Vérifier si l'acte a déjà été synchronisé (via localId)
+    if (payload.localId) {
+      const existing = await prisma.birth.findUnique({
+        where: { localId: payload.localId }
+      });
+      if (existing) return existing; // Déjà synchronisé, on retourne l'existant
+    }
+
     // 1. Vérification de l'établissement
     const establishment = await prisma.establishment.findUnique({
       where: { code: payload.establishmentCode }
@@ -18,6 +26,16 @@ class BirthService {
 
     if (!establishment) {
       throw new Error(`Établissement inconnu avec le code: ${payload.establishmentCode}`);
+    }
+
+    // 1b. Vérifier si lié à une demande existante pour éviter les doublons
+    if (payload.requestId) {
+      const request = await prisma.request.findUnique({
+        where: { id: payload.requestId }
+      });
+      if (request && request.birthId) {
+        throw new Error('Une naissance a déjà été enregistrée pour cette demande');
+      }
     }
 
     // 2. Génération ID National (GN-AAAA-PREF-XXXX)
@@ -29,6 +47,7 @@ class BirthService {
     const newBirth = await prisma.birth.create({
       data: {
         nationalId,
+        localId: payload.localId,
         status: 'PENDING_SYNC',
         validationStatus,
         isLateRegistration: payload.isLateRegistration || false,
@@ -54,6 +73,17 @@ class BirthService {
         establishmentId: establishment.id
       }
     });
+
+    // 3b. Lier à la demande si présente
+    if (payload.requestId) {
+      await prisma.request.update({
+        where: { id: payload.requestId },
+        data: { 
+          birthId: newBirth.id,
+          status: 'COMPLETED'
+        }
+      });
+    }
 
     // 4. Si c'est un enregistrement normal, on envoie en arrière-plan pour finalisation
     if (validationStatus === 'APPROVED') {

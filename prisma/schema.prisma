@@ -6,6 +6,22 @@ datasource db {
   provider = "postgresql"
 }
 
+model Notification {
+  id          String   @id @default(uuid())
+  citizenId   String
+  citizen     Citizen  @relation(fields: [citizenId], references: [id])
+  
+  title       String
+  content     String
+  type        String   // INFO, SUCCESS, WARNING, BIRTH_ID
+  relatedId   String?  // ID de l'acte ou de la demande
+  isRead      Boolean  @default(false)
+  
+  createdAt   DateTime @default(now())
+
+  @@index([citizenId])
+}
+
 enum Role {
   AGENT
   ADMIN
@@ -36,6 +52,7 @@ model Agent {
   updatedAt             DateTime @updatedAt
 
   births                Birth[]
+  requests              Request[]
 }
 
 model Establishment {
@@ -64,6 +81,7 @@ model Birth {
   blockchainHash  String?  @unique
   ipfsCid         String?  // PDF de l'acte
   status          String   @default("PENDING_SYNC") // PENDING_SYNC, REGISTERED, FAILED
+  localId         String?  @unique
   
   // Enregistrement tardif
   isLateRegistration Boolean @default(false)
@@ -133,6 +151,7 @@ model Citizen {
   updatedAt    DateTime @updatedAt
 
   requests     Request[]
+  notifications Notification[]
 
   @@index([phoneNumber])
   @@index([cniNumber])
@@ -161,7 +180,13 @@ model Request {
   
   // Pour demande de certificat
   birthId     String?
+  assignedAgentId String?
+  agent       Agent?    @relation(fields: [assignedAgentId], references: [id])
   childName   String?
+  birthDate   DateTime?
+  gender      String?
+  fatherName  String?
+  motherName  String?
   
   // Informations de livraison
   deliveryMethod String @default("DIGITAL") // DIGITAL, PICKUP, MAIL

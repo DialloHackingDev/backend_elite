@@ -59,6 +59,7 @@ app.use('/api/verify', verifyRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/citizen', citizenRoutes);
 app.use('/api/requests', requestRoutes);
+app.use('/api/notifications', require('./routes/notification.routes'));
 
 // Middleware global de gestion des erreurs (à intégrer plus tard)
 app.use((err, req, res, next) => {

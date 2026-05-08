@@ -19,4 +19,10 @@ router.get('/:id', rbacMiddleware(['ADMIN', 'MINISTRY']), agentController.getAge
 // Activer / Suspendre un agent
 router.patch('/:id/status', rbacMiddleware(['ADMIN']), agentController.updateAgentStatus);
 
+// Modifier un agent
+router.put('/:id', rbacMiddleware(['ADMIN', 'MINISTRY']), agentController.updateAgent);
+
+// Supprimer un agent
+router.delete('/:id', rbacMiddleware(['ADMIN']), agentController.deleteAgent);
+
 module.exports = router;

@@ -4,7 +4,7 @@ const { generateTokens } = require('../utils/jwt.util');
 
 exports.register = async (req, res) => {
   try {
-    const { fullName, phoneNumber, password, cniNumber, prefecture } = req.body;
+    let { fullName, phoneNumber, password, cniNumber, prefecture } = req.body;
     
     if (!fullName || !phoneNumber || !password || !cniNumber) {
       return res.status(400).json({ 
@@ -13,15 +13,34 @@ exports.register = async (req, res) => {
       });
     }
 
-    // Vérifier si le téléphone existe déjà
-    const existingUser = await prisma.citizen.findUnique({
-      where: { phoneNumber }
+    // Normalisation robuste du numéro
+    let normalizedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    if (normalizedPhone.startsWith('+224')) {
+      normalizedPhone = normalizedPhone.substring(4);
+    } else if (normalizedPhone.startsWith('00224')) {
+      normalizedPhone = normalizedPhone.substring(5);
+    }
+    
+    // Supprimer le 0 initial s'il reste 10 chiffres (format 0621... -> 621...)
+    if (normalizedPhone.length === 10 && normalizedPhone.startsWith('0')) {
+      normalizedPhone = normalizedPhone.substring(1);
+    }
+
+    // Vérifier si le téléphone ou la CNI existe déjà
+    const existingUser = await prisma.citizen.findFirst({
+      where: {
+        OR: [
+          { phoneNumber: normalizedPhone },
+          { cniNumber: cniNumber }
+        ]
+      }
     });
 
     if (existingUser) {
+      const isPhone = existingUser.phoneNumber === normalizedPhone;
       return res.status(400).json({ 
         status: 'error', 
-        message: 'Un compte avec ce numéro existe déjà' 
+        message: isPhone ? 'Ce numéro de téléphone est déjà utilisé' : 'Ce numéro de CNI est déjà utilisé' 
       });
     }
 
@@ -30,7 +49,7 @@ exports.register = async (req, res) => {
     const citizen = await prisma.citizen.create({
       data: {
         fullName,
-        phoneNumber,
+        phoneNumber: normalizedPhone,
         passwordHash,
         cniNumber,
         prefecture: prefecture || 'Conakry'
@@ -61,7 +80,7 @@ exports.register = async (req, res) => {
     console.error('Erreur inscription citoyen:', error);
     res.status(500).json({ 
       status: 'error', 
-      message: 'Erreur lors de la création du compte' 
+      message: 'Erreur lors de la création du compte: ' + error.message 
     });
   }
 };
@@ -77,8 +96,21 @@ exports.login = async (req, res) => {
       });
     }
 
+    // Normalisation robuste du numéro
+    let normalizedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+    if (normalizedPhone.startsWith('+224')) {
+      normalizedPhone = normalizedPhone.substring(4);
+    } else if (normalizedPhone.startsWith('00224')) {
+      normalizedPhone = normalizedPhone.substring(5);
+    }
+    
+    // Supprimer le 0 initial s'il reste 10 chiffres (format 0621... -> 621...)
+    if (normalizedPhone.length === 10 && normalizedPhone.startsWith('0')) {
+      normalizedPhone = normalizedPhone.substring(1);
+    }
+
     const citizen = await prisma.citizen.findUnique({
-      where: { phoneNumber }
+      where: { phoneNumber: normalizedPhone }
     });
 
     if (!citizen) {

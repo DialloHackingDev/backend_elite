@@ -25,12 +25,17 @@ class RequestService {
         type: data.type,
         birthId: data.birthId,
         childName: data.childName,
+        birthDate: data.birthDate ? new Date(data.birthDate) : null,
+        gender: data.gender,
+        fatherName: data.fatherName,
+        motherName: data.motherName,
         deliveryMethod: data.deliveryMethod || 'DIGITAL',
         phoneNumber: data.phoneNumber,
         email: data.email,
         address: data.address,
         documents: data.documents ? JSON.stringify(data.documents) : null,
-        notes: data.notes
+        notes: data.notes,
+        assignedAgentId: data.assignedAgentId
       }
     });
     

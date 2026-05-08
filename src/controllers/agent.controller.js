@@ -56,3 +56,28 @@ exports.updateAgentStatus = async (req, res) => {
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
+
+exports.updateAgent = async (req, res) => {
+  try {
+    const updatedAgent = await agentService.updateAgent(req.params.id, req.body);
+    res.status(200).json({
+      status: 'success',
+      message: 'Agent mis à jour avec succès',
+      data: updatedAgent
+    });
+  } catch (error) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
+
+exports.deleteAgent = async (req, res) => {
+  try {
+    await agentService.deleteAgent(req.params.id);
+    res.status(200).json({
+      status: 'success',
+      message: 'Agent supprimé avec succès'
+    });
+  } catch (error) {
+    res.status(400).json({ status: 'error', message: error.message });
+  }
+};
