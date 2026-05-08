@@ -15,14 +15,10 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
-
 # Expose port
 EXPOSE 3000
 
-# Copy and make start script executable
-COPY start.sh .
+# Make start script executable
 RUN chmod +x start.sh
 
 # Start command

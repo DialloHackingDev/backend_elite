@@ -30,6 +30,10 @@ echo "DATABASE_URL=$DATABASE_URL" > .env
 echo "⏳ Attente de la base de données..."
 sleep 3
 
+# Générer le client Prisma
+echo "🔄 Génération du client Prisma..."
+npx prisma generate --schema=./prisma/schema.prisma 2>&1
+
 # Créer les tables avec les migrations
 echo "🔄 Exécution des migrations Prisma..."
 npx prisma migrate deploy --schema=./prisma/schema.prisma 2>&1 || \
