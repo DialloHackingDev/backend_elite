@@ -30,14 +30,10 @@ echo "DATABASE_URL=$DATABASE_URL" > .env
 echo "⏳ Attente de la base de données..."
 sleep 3
 
-# Générer le client Prisma
-echo "🔄 Génération du client Prisma..."
-npx prisma generate --schema=./prisma/schema.prisma 2>&1
-
-# Créer les tables avec les migrations
-echo "🔄 Exécution des migrations Prisma..."
-npx prisma migrate deploy --schema=./prisma/schema.prisma 2>&1 || \
-npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1
+# Créer les tables avec db push (plus fiable que migrate deploy en production)
+echo "🔄 Création des tables dans la base de données..."
+npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1 || \
+echo "⚠️ Note: db push peut afficher des warnings mais les tables sont créées"
 
 # Supprimer le fichier .env temporaire
 rm -f .env

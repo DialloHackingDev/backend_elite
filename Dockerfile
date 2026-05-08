@@ -15,6 +15,15 @@ RUN npm ci
 # Copy the rest of the application code
 COPY . .
 
+# Create a placeholder .env for prisma generate during build
+RUN echo 'DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder' > .env
+
+# Generate Prisma client (required for the app to work)
+RUN npx prisma generate --schema=./prisma/schema.prisma
+
+# Remove the placeholder .env
+RUN rm -f .env
+
 # Expose port
 EXPOSE 3000
 
