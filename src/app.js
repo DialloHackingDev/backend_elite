@@ -5,6 +5,9 @@ const morgan = require('morgan');
 
 const app = express();
 
+// Trust proxy pour Railway (corrige express-rate-limit)
+app.set('trust proxy', 1);
+
 // ⚠️ DEBUG: Log toutes les requêtes AVANT tout middleware
 app.use((req, res, next) => {
   console.log(`[HTTP] ${new Date().toISOString()} ${req.method} ${req.path}  - Headers:`, req.headers.host);

@@ -35,6 +35,10 @@ echo "🔄 Création des tables dans la base de données..."
 npx prisma db push --schema=./prisma/schema.prisma --accept-data-loss 2>&1 || \
 echo "⚠️ Note: db push peut afficher des warnings mais les tables sont créées"
 
+# Exporter DATABASE_URL explicitement pour que Node.js l'utilise
+export DATABASE_URL="$DATABASE_URL"
+echo "📊 DATABASE_URL exportée pour Node.js"
+
 # Supprimer le fichier .env temporaire
 rm -f .env
 
