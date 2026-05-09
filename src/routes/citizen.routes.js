@@ -9,6 +9,11 @@ router.use(authMiddleware);
 
 // Uniquement pour les citoyens (ou les admins pour support)
 router.get('/my-children', rbacMiddleware(['CITIZEN', 'ADMIN']), citizenController.getMyChildrenBirths);
+
+// Chercher un acte par nationalId (ex: GN-2026-MAL-8888333)
+router.get('/birth/:nationalId', rbacMiddleware(['CITIZEN', 'ADMIN']), citizenController.getBirthByNationalId);
+
+// Télécharger le PDF — accepte un birthId (UUID) ou un nationalId (GN-...)
 router.get('/certificate/:birthId', rbacMiddleware(['CITIZEN', 'ADMIN']), citizenController.downloadCertificate);
 
 module.exports = router;
