@@ -1,17 +1,9 @@
-require('dotenv').config();
-const prisma = require('./src/config/database');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 async function main() {
-  try {
-    const agents = await prisma.agent.findMany();
-    console.log('Agents count:', agents.length);
-    console.log(JSON.stringify(agents, null, 2));
-  } catch (e) {
-    console.error('Error querying agents:', e.message);
-  } finally {
-    await prisma.$disconnect();
-    process.exit(0);
-  }
+  const requests = await prisma.request.findMany();
+  console.log(requests);
 }
 
-main();
+main().catch(console.error).finally(() => prisma.$disconnect());
