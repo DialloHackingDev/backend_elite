@@ -108,12 +108,8 @@ class CitizenService {
 
     if (!isOwner) throw new Error('Vous n\'êtes pas autorisé à accéder à cet acte');
 
-    const qrData = JSON.stringify({
-      id: birth.nationalId,
-      hash: birth.blockchainHash
-    });
-
-    const qrCodeDataURL = await generateQRCodeDataURL(qrData);
+    // Préparer les données du QR Code (signature HMAC et URL) — passer les paramètres requis
+    const qrCodeDataURL = await generateQRCodeDataURL(birth.nationalId, birth.blockchainHash);
 
     const pdfBuffer = await generateBirthCertificatePDF({
       ...birth,

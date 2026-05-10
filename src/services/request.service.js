@@ -1,6 +1,105 @@
 const prisma = require('../config/database');
+const { enqueueSyncJob } = require('../jobs/sync.queue');
+
+const ALLOWED_REQUEST_TYPES = ['BIRTH_CERTIFICATE', 'COPY_CERTIFICATE', 'CORRECTION'];
+const ALLOWED_DELIVERY_METHODS = ['DIGITAL', 'PICKUP', 'MAIL'];
 
 class RequestService {
+  _parseDate(value, fieldName) {
+    if (value === undefined || value === null || value === '') {
+      return null;
+    }
+
+    const normalized = String(value).trim();
+    let date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) {
+      const safeValue = normalized.replace(/\//g, '-');
+      const parts = safeValue.split('-');
+      if (parts.length === 3) {
+        let [first, second, third] = parts.map((part) => part.padStart(2, '0'));
+        if (first.length === 4) {
+          date = new Date(`${first}-${second}-${third}`);
+        } else if (third.length === 4) {
+          date = new Date(`${third}-${second}-${first}`);
+        }
+      }
+    }
+
+    if (Number.isNaN(date.getTime())) {
+      throw new Error(`Date invalide pour ${fieldName} : ${value}`);
+    }
+
+    return date;
+  }
+
+  async _validateAgentIfProvided(agentId) {
+    if (!agentId) {
+      return null;
+    }
+
+    const agent = await prisma.agent.findUnique({ where: { id: agentId } });
+    if (!agent) {
+      throw new Error('Agent sélectionné introuvable');
+    }
+
+    return agentId;
+  }
+
+  async _normalizeRequestPayload(data) {
+    if (!data.citizenId) {
+      throw new Error('citizenId est requis');
+    }
+
+    if (!data.type) {
+      throw new Error('Le type de demande est requis');
+    }
+
+    const type = String(data.type).toUpperCase();
+    if (!ALLOWED_REQUEST_TYPES.includes(type)) {
+      throw new Error(`Type de demande invalide. Valeurs attendues : ${ALLOWED_REQUEST_TYPES.join(', ')}`);
+    }
+
+    const deliveryMethod = data.deliveryMethod
+      ? String(data.deliveryMethod).toUpperCase()
+      : 'DIGITAL';
+    if (!ALLOWED_DELIVERY_METHODS.includes(deliveryMethod)) {
+      throw new Error(`Méthode de livraison invalide. Valeurs attendues : ${ALLOWED_DELIVERY_METHODS.join(', ')}`);
+    }
+
+    const assignedAgentId = await this._validateAgentIfProvided(data.assignedAgentId);
+
+    return {
+      citizenId: String(data.citizenId),
+      type,
+      birthId: data.birthId || null,
+      childFirstName: data.childFirstName?.trim() || null,
+      childLastName: data.childLastName?.trim() || null,
+      childGender: data.childGender?.trim() || null,
+      birthDate: this._parseDate(data.birthDate, 'birthDate'),
+      timeOfBirth: data.timeOfBirth?.trim() || null,
+      placeOfBirth: data.placeOfBirth?.trim() || null,
+      motherFullName: data.motherFullName?.trim() || null,
+      motherDob: this._parseDate(data.motherDob, 'motherDob'),
+      motherCni: data.motherCni?.trim() || null,
+      motherPrefecture: data.motherPrefecture?.trim() || null,
+      fatherFullName: data.fatherFullName?.trim() || null,
+      fatherDob: this._parseDate(data.fatherDob, 'fatherDob'),
+      fatherCni: data.fatherCni?.trim() || null,
+      witness1FullName: data.witness1FullName?.trim() || null,
+      witness1Cni: data.witness1Cni?.trim() || null,
+      witness2FullName: data.witness2FullName?.trim() || null,
+      witness2Cni: data.witness2Cni?.trim() || null,
+      isLateRegistration: Boolean(data.isLateRegistration),
+      deliveryMethod,
+      phoneNumber: data.phoneNumber?.trim() || null,
+      email: data.email?.trim() || null,
+      address: data.address?.trim() || null,
+      documents: data.documents ? JSON.stringify(data.documents) : null,
+      notes: data.notes?.trim() || null,
+      assignedAgentId,
+    };
+  }
+
   async getRequestsByCitizen(citizenId) {
     const requests = await prisma.request.findMany({
       where: { citizenId },
@@ -20,43 +119,10 @@ class RequestService {
   }
   
   async createRequest(data) {
+    const normalized = await this._normalizeRequestPayload(data);
+
     const request = await prisma.request.create({
-      data: {
-        citizenId: data.citizenId,
-        type: data.type,
-        birthId: data.birthId,
-        
-        childFirstName: data.childFirstName,
-        childLastName: data.childLastName,
-        childGender: data.childGender,
-        birthDate: data.birthDate ? new Date(data.birthDate) : null,
-        timeOfBirth: data.timeOfBirth,
-        placeOfBirth: data.placeOfBirth,
-        
-        motherFullName: data.motherFullName,
-        motherDob: data.motherDob ? new Date(data.motherDob) : null,
-        motherCni: data.motherCni,
-        motherPrefecture: data.motherPrefecture,
-        
-        fatherFullName: data.fatherFullName,
-        fatherDob: data.fatherDob ? new Date(data.fatherDob) : null,
-        fatherCni: data.fatherCni,
-        
-        witness1FullName: data.witness1FullName,
-        witness1Cni: data.witness1Cni,
-        witness2FullName: data.witness2FullName,
-        witness2Cni: data.witness2Cni,
-        
-        isLateRegistration: data.isLateRegistration || false,
-        
-        deliveryMethod: data.deliveryMethod || 'DIGITAL',
-        phoneNumber: data.phoneNumber,
-        email: data.email,
-        address: data.address,
-        documents: data.documents ? JSON.stringify(data.documents) : null,
-        notes: data.notes,
-        assignedAgentId: data.assignedAgentId
-      }
+      data: normalized
     });
     
     return request;
@@ -143,6 +209,14 @@ class RequestService {
       if (!request) throw new Error('Demande non trouvée');
       if (request.status !== 'PENDING') throw new Error('Cette demande a déjà été traitée.');
 
+      const birthDateValue = data.dateOfBirth || data.birthDate;
+      const motherDobValue = data.motherDob;
+      const fatherDobValue = data.fatherDob;
+
+      const dateOfBirth = this._parseDate(birthDateValue, 'dateOfBirth');
+      const motherDob = this._parseDate(motherDobValue, 'motherDob');
+      const fatherDob = fatherDobValue ? this._parseDate(fatherDobValue, 'fatherDob') : null;
+
       // 2. Créer l'acte de naissance via birthService logic (simplifié ici pour tx)
       // Générer l'ID National: GN-AAAA-PREF-XXXXXXX
       const year = new Date().getFullYear();
@@ -167,15 +241,15 @@ class RequestService {
           childFirstName: data.childFirstName,
           childLastName: data.childLastName,
           childGender: data.childGender,
-          dateOfBirth: new Date(data.dateOfBirth),
+          dateOfBirth,
           timeOfBirth: data.timeOfBirth,
           placeOfBirth: data.placeOfBirth,
           motherFullName: data.motherFullName,
-          motherDob: new Date(data.motherDob),
+          motherDob,
           motherCni: data.motherCni,
           motherPrefecture: data.motherPrefecture,
           fatherFullName: data.fatherFullName,
-          fatherDob: data.fatherDob ? new Date(data.fatherDob) : null,
+          fatherDob,
           fatherCni: data.fatherCni,
           witness1FullName: data.witness1FullName,
           witness1Cni: data.witness1Cni,
@@ -184,10 +258,12 @@ class RequestService {
           isLateRegistration: data.isLateRegistration || false,
           agentId: agentId,
           establishmentId: establishment.id,
-          status: 'REGISTERED',
+          status: 'PENDING_SYNC',
           validationStatus: 'APPROVED'
         }
       });
+
+      await enqueueSyncJob(birth.id);
 
       // 3. Mettre à jour la demande
       const updatedRequest = await tx.request.update({

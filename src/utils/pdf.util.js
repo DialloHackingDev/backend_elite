@@ -152,11 +152,11 @@ const generateBirthCertificatePDF = (birthData) => {
       _drawSectionHeader(doc, 'MÈRE', colors, margin, y, contentWidth);
       
       y += 18;
-      const mereData = [
-        ['Nom', birthData.motherFullName || '—'],
-        ['Date de naissance', new Date(birthData.motherDob).toLocaleDateString('fr-FR')],
-        ['Nationalité', 'Guinéenne']
-      ];
+         const mereData = [
+            ['Nom', birthData.motherFullName || '—'],
+            ['Date de naissance', birthData.motherDob ? new Date(birthData.motherDob).toLocaleDateString('fr-FR') : '—'],
+            ['Nationalité', 'Guinéenne']
+         ];
       y = _drawInfoTable(doc, mereData, margin + 10, y, contentWidth - 20, colors);
 
       // === DÉCLARANT ===
@@ -240,8 +240,8 @@ const generateBirthCertificatePDF = (birthData) => {
       doc.fontSize(6)
          .fillColor(colors.text)
          .text('Document numérique certifié blockchain - Vérifiez via QR code',
-               margin + 70, footerY + 45, 
-               { width: contentWidth - 170, align: 'center' });
+            margin + 70, footerY + 45,
+            { width: contentWidth - 170, align: 'center' });
 
       doc.end();
     } catch (error) {

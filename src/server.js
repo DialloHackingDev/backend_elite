@@ -1,7 +1,8 @@
 require('dotenv').config();
 process.env.UV_THREADPOOL_SIZE = 64;
 
-const app    = require('./app');
+const app = require('./app');
+const validateEnvironment = require('./config/env.validator');
 const prisma = require('./config/database');
 
 const PORT = process.env.PORT || 3000;
@@ -17,6 +18,7 @@ process.on('uncaughtException', (err) => {
 
 async function startServer() {
   try {
+    validateEnvironment();
     await prisma.$connect();
     console.log('✅ Connecté à la base de données PostgreSQL.');
 

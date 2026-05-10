@@ -10,7 +10,7 @@ class DashboardService {
       const totalBirths = await prisma.birth.count();
       const totalAgents = await prisma.agent.count();
       const activeAgents = await prisma.agent.count({ where: { status: 'ACTIVE' } });
-      const offlineAgents = await prisma.agent.count({ where: { status: 'OFFLINE' } });
+      const offlineAgents = totalAgents - activeAgents;
       
       // Naissances par sexe
       const males = await prisma.birth.count({ where: { childGender: 'M' } });
@@ -42,10 +42,10 @@ class DashboardService {
         }
       });
 
-      // Taux de couverture (estimation basée sur les établissements)
-      const totalEstablishments = await prisma.establishment?.count?.() || 124;
-      const activeEstablishments = await prisma.establishment?.count?.({ where: { status: 'ACTIVE' } }) || 120;
-      const coverageRate = Math.round((activeEstablishments / totalEstablishments) * 100);
+      // Taux de couverture (estimation basée sur le nombre d'établissements)
+      const totalEstablishments = await prisma.establishment.count();
+      const activeEstablishments = totalEstablishments;
+      const coverageRate = totalEstablishments > 0 ? Math.round((activeEstablishments / totalEstablishments) * 100) : 0;
 
       // Taux de synchronisation blockchain
       const syncedBirths = await prisma.birth.count({ 
@@ -208,7 +208,8 @@ class DashboardService {
    */
   async getAuditLog(limit = 50, type = null) {
     try {
-      const where = type ? { action: type } : {};
+      // Le modèle Birth n'a pas de champ `action` : on ignore le filtre `type` pour éviter une erreur Prisma.
+      const where = {};
 
       // Récupère les derniers enregistrements de naissance (simulation d'audit log)
       const births = await prisma.birth.findMany({
@@ -218,7 +219,13 @@ class DashboardService {
           nationalId: true,
           status: true,
           blockchainHash: true,
-          agent: { select: { fullName: true, agentId: true } },
+          agent: {
+            select: {
+              firstName: true,
+              lastName: true,
+              nationalAgentId: true
+            }
+          },
           createdAt: true,
           updatedAt: true
         },
@@ -230,7 +237,8 @@ class DashboardService {
       const agents = await prisma.agent.findMany({
         select: {
           id: true,
-          fullName: true,
+          firstName: true,
+          lastName: true,
           status: true,
           lastLogin: true,
           updatedAt: true
@@ -247,13 +255,13 @@ class DashboardService {
           hash: b.blockchainHash ? `0x${b.blockchainHash.substring(0, 10)}...` : 'En attente...',
           status: b.blockchainHash ? 'VALID' : 'PENDING',
           nationalId: b.nationalId,
-          agent: b.agent?.fullName || 'System',
+          agent: b.agent ? `${b.agent.firstName} ${b.agent.lastName}` : 'System',
           timestamp: b.createdAt
         })),
         agents: agents.map(a => ({
           id: a.id,
           type: 'AGENT_UPDATE',
-          name: a.fullName,
+          name: `${a.firstName} ${a.lastName}`,
           status: a.status,
           timestamp: a.updatedAt,
           lastLogin: a.lastLogin

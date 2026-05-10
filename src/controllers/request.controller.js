@@ -10,6 +10,7 @@ exports.getMyRequests = async (req, res) => {
       data: requests
     });
   } catch (error) {
+    console.error('[RequestController] getMyRequests error', error);
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
@@ -27,6 +28,7 @@ exports.createRequest = async (req, res) => {
       data: newRequest
     });
   } catch (error) {
+    console.error('[RequestController] createRequest error', error);
     res.status(400).json({ status: 'error', message: error.message });
   }
 };
