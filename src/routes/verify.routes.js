@@ -8,4 +8,7 @@ router.post('/qr', verifyController.verifyQR);
 // Route publique pour vérifier via ID National manuel
 router.post('/id', verifyController.verifyId);
 
+// Route publique pour visualiser le document certifié au format PDF
+router.get('/document/:nationalId', verifyController.getDocument);
+
 module.exports = router;

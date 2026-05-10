@@ -1,5 +1,6 @@
 const prisma = require('../config/database');
-const { verifyHMACSignature } = require('../utils/qr.util');
+const { verifyHMACSignature, generateQRCodeDataURL } = require('../utils/qr.util');
+const { generateBirthCertificatePDF } = require('../utils/pdf.util');
 
 class VerifyService {
   /**
@@ -59,7 +60,7 @@ class VerifyService {
           dateOfBirth: birth.dateOfBirth,
           placeOfBirth: birth.placeOfBirth,
           establishment: birth.establishment?.name ?? '—',
-          ipfsUrl: birth.ipfsCid ? `https://gateway.pinata.cloud/ipfs/${birth.ipfsCid}` : null
+          ipfsUrl: birth.ipfsCid && !birth.ipfsCid.startsWith('MOCK_CID_') ? `https://gateway.pinata.cloud/ipfs/${birth.ipfsCid}` : null
         }
       };
 
@@ -91,7 +92,6 @@ class VerifyService {
       throw error;
     }
 
-    // Un acte est considéré "Authentique" s'il a un hash blockchain valide
     if (!birth.blockchainHash) {
       await this.logVerification(birth.id, ipAddress, verifierType, 'NOT_SYNCED');
       return { isValid: false, reason: 'Cet acte n\'est pas encore certifié sur la blockchain' };
@@ -113,9 +113,31 @@ class VerifyService {
         fatherFullName: birth.fatherFullName,
         establishment: birth.establishment?.name ?? '—',
         blockchainHash: birth.blockchainHash,
-        ipfsUrl: birth.ipfsCid ? `https://gateway.pinata.cloud/ipfs/${birth.ipfsCid}` : null
+        ipfsUrl: birth.ipfsCid && !birth.ipfsCid.startsWith('MOCK_CID_') ? `https://gateway.pinata.cloud/ipfs/${birth.ipfsCid}` : null
       }
     };
+  }
+
+  async generatePublicBirthCertificatePDF(nationalId) {
+    const birth = await prisma.birth.findUnique({
+      where: { nationalId },
+      include: { establishment: true }
+    });
+
+    if (!birth) {
+      throw new Error('Acte introuvable');
+    }
+
+    if (!birth.blockchainHash) {
+      throw new Error('Acte non certifié sur la blockchain');
+    }
+
+    const qrCodeDataURL = await generateQRCodeDataURL(birth.nationalId, birth.blockchainHash);
+
+    return await generateBirthCertificatePDF({
+      ...birth,
+      qrCodeDataURL
+    });
   }
 
   /**
@@ -123,18 +145,16 @@ class VerifyService {
    */
   async logVerification(birthIdentifier, ipAddress, verifierType, result) {
     try {
-      // Si pas d'identifiant, on ne peut pas logger
       if (!birthIdentifier) {
         console.log('[VerifyService] Pas d\'identifiant pour logger');
         return;
       }
 
-      // Si l'ID passé est un nationalId (en cas d'échec de la DB), on essaie de trouver le vrai ID
       let birthId = birthIdentifier;
       if (typeof birthIdentifier === 'string' && birthIdentifier.startsWith('GN-')) {
         const b = await prisma.birth.findUnique({ where: { nationalId: birthIdentifier } });
         if (b) birthId = b.id;
-        else return; // Impossible de logger si l'acte n'existe vraiment pas dans notre DB
+        else return;
       }
 
       await prisma.verification.create({
@@ -152,3 +172,4 @@ class VerifyService {
 }
 
 module.exports = new VerifyService();
+

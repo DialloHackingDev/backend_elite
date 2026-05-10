@@ -192,7 +192,7 @@ const generateBirthCertificatePDF = (birthData) => {
                margin + 10, y);
 
       // === PIED DE PAGE ===
-      const footerY = pageHeight - margin - 75;
+      const footerY = pageHeight - margin - 90;
       
       // QR Code en bas à droite
       if (birthData.qrCodeDataURL) {
@@ -208,7 +208,7 @@ const generateBirthCertificatePDF = (birthData) => {
           // Légende QR
           doc.fontSize(7)
              .fillColor(colors.text)
-             .text('Scanner pour vérifier', pageWidth - margin - 90, footerY + 75, 
+             .text('Scanner pour vérifier', pageWidth - margin - 90, footerY + 63, 
                    { width: 80, align: 'center' });
         } catch (e) {
           console.log('Erreur QR Code PDF:', e.message);
