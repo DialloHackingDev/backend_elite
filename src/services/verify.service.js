@@ -9,7 +9,9 @@ class VerifyService {
   async verifyFromQRCode(qrPayload, ipAddress, verifierType) {
     try {
       const data = JSON.parse(qrPayload);
-      const { id, hash, sig } = data;
+      const id = data.id || data.nationalId || data.blockchainId;
+      const hash = data.hash || data.blockchainHash;
+      const sig = data.sig || data.signature;
 
       // Vérification que l'ID est présent
       if (!id) {
