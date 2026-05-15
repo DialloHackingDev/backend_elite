@@ -177,9 +177,18 @@ class RequestService {
   
   // Pour les agents/admin
   async getPendingRequests(agentId = null) {
-    const whereClause = { status: 'PENDING' };
+    // Les admins voient tout. Les agents voient les demandes qui leur sont assignées
+    // OU celles qui n'ont pas encore d'agent assigné (file d'attente publique).
+    let whereClause = { status: 'PENDING' };
+    
     if (agentId) {
-      whereClause.assignedAgentId = agentId;
+      whereClause = {
+        status: 'PENDING',
+        OR: [
+          { assignedAgentId: agentId },
+          { assignedAgentId: null }
+        ]
+      };
     }
     
     const requests = await prisma.request.findMany({

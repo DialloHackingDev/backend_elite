@@ -1,4 +1,5 @@
 const PDFDocument = require('pdfkit');
+const path = require('path');
 
 /**
  * Génère le PDF de l'acte de naissance en mémoire - Design Officiel Guinéen
@@ -56,20 +57,34 @@ const generateBirthCertificatePDF = (birthData) => {
       // === EN-TÊTE OFFICIEL ===
       let y = margin + 15;
       
-      // Logo/Emblème (cercle doré simulé)
-      doc.save();
-      doc.circle(pageWidth / 2, y + 25, 22)
-         .fillColor(colors.gold)
-         .fill();
-      doc.circle(pageWidth / 2, y + 25, 18)
-         .fillColor(colors.headerBg)
-         .fill();
-      doc.fontSize(10)
-         .fillColor(colors.primary)
-         .text('★', pageWidth / 2 - 6, y + 19);
-      doc.restore();
+      // Logo Officiel (Guinée)
+      try {
+        const logoPath = path.join(process.cwd(), 'logoGuine.png');
+        
+        // On dessine le logo dans un cercle avec un effet professionnel
+        doc.save();
+        // Cercle de clipping pour l'image
+        doc.circle(pageWidth / 2, y + 30, 30).clip();
+        doc.image(logoPath, pageWidth / 2 - 30, y, { width: 60 });
+        doc.restore();
+        
+        // Contour doré élégant
+        doc.circle(pageWidth / 2, y + 30, 31)
+           .lineWidth(1.5)
+           .strokeColor(colors.gold)
+           .stroke();
+           
+      } catch (e) {
+        // Fallback si l'image est manquante
+        doc.circle(pageWidth / 2, y + 25, 22)
+           .fillColor(colors.gold)
+           .fill();
+        doc.circle(pageWidth / 2, y + 25, 18)
+           .fillColor(colors.headerBg)
+           .fill();
+      }
 
-      y += 55;
+      y += 75;
 
       // Titre officiel
       doc.font('Helvetica-Bold')
