@@ -103,6 +103,45 @@ class DashboardService {
   }
 
   /**
+   * Récupère les tendances d'enregistrement sur les 7 derniers jours
+   */
+  async getRegistrationTrends() {
+    try {
+      const trends = [];
+      const now = new Date();
+      
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        date.setHours(0, 0, 0, 0);
+        
+        const nextDay = new Date(date);
+        nextDay.setDate(nextDay.getDate() + 1);
+        
+        const count = await prisma.birth.count({
+          where: {
+            createdAt: {
+              gte: date,
+              lt: nextDay
+            }
+          }
+        });
+        
+        trends.push({
+          date: date.toISOString().split('T')[0],
+          label: date.toLocaleDateString('fr-FR', { weekday: 'short' }),
+          count
+        });
+      }
+      
+      return trends;
+    } catch (error) {
+      console.error('Error in getRegistrationTrends:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Récupère la liste des agents avec leurs statistiques
    */
   async getAgentsData(limit = 50, offset = 0, region = null) {

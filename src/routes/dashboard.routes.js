@@ -7,6 +7,7 @@ const rbacMiddleware = require('../middlewares/rbac.middleware');
 // Routes publiques pour les statistiques globales
 router.get('/kpis', dashboardController.getKPIs);
 router.get('/stats', dashboardController.getKPIs); // alias pour le mobile
+router.get('/trends', dashboardController.getTrends);
 
 // Toutes les autres routes du dashboard sont protégées et réservées aux ministères et admins
 router.use(authMiddleware, rbacMiddleware(['ADMIN', 'MINISTRY']));

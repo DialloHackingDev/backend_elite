@@ -1,3 +1,4 @@
+const os = require('os');
 require('dotenv').config();
 process.env.UV_THREADPOOL_SIZE = 64;
 
@@ -7,37 +8,64 @@ const prisma = require('./config/database');
 
 const PORT = process.env.PORT || 3000;
 
-// ── Garde-fou global : empêche le crash sur promesse non gérée ─────────────────
+// Détecter l'IP locale pour faciliter le dev mobile
+const getLocalIP = () => {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+};
+
+const LOCAL_IP = getLocalIP();
+
+// ── Garde-fou global ───────────────────────────────────────────────────────────
 process.on('unhandledRejection', (reason) => {
-  console.error('⚠️  UnhandledRejection (ignoré):', reason?.message || reason);
+  console.error('⚠️  UnhandledRejection:', reason?.message || reason);
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('⚠️  UncaughtException (ignoré):', err.message);
+  console.error('⚠️  UncaughtException:', err.message);
 });
 
 async function startServer() {
   try {
+    console.log('--- Démarrage NaissanceChain ---');
     validateEnvironment();
+    
     await prisma.$connect();
-    console.log('✅ Connecté à la base de données PostgreSQL.');
+    console.log('✅ Connecté à PostgreSQL.');
 
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Serveur en écoute sur http://0.0.0.0:${PORT}`);
-      console.log(`📱 Pour mobile: http://192.168.1.107:${PORT}/api`);
+    // Initialisation des workers avant de démarrer le serveur HTTP
+    try {
+      require('./jobs/sms.queue');
+      require('./jobs/sync.queue');
+      console.log('✅ BullMQ Workers initialisés');
+    } catch (err) {
+      console.warn("⚠️  BullMQ non initialisé:", err.message);
+    }
 
-      setTimeout(() => {
-        try {
-          require('./jobs/sms.queue');
-          require('./jobs/sync.queue');
-          console.log('✅ BullMQ Workers initialisés avec Redis');
-        } catch (err) {
-          console.warn("⚠️  Impossible d'initialiser BullMQ:", err.message);
-        }
-      }, 5000);
+    // Démarrage du serveur Express
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Serveur : http://localhost:${PORT}`);
+      console.log(`📱 Mobile  : http://${LOCAL_IP}:${PORT}/api`);
     });
+
+    // Garder le processus actif (Heartbeat)
+    setInterval(() => {}, 1000 * 60 * 60); 
+
+    // Gestion propre de l'arrêt
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM reçu. Fermeture du serveur...');
+      server.close(() => process.exit(0));
+    });
+
   } catch (error) {
-    console.error('❌ Erreur de démarrage du serveur:', error);
+    console.error('❌ Erreur critique au démarrage:', error);
     process.exit(1);
   }
 }

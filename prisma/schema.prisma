@@ -4,20 +4,21 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Notification {
-  id          String   @id @default(uuid())
-  citizenId   String
-  citizen     Citizen  @relation(fields: [citizenId], references: [id])
-  
-  title       String
-  content     String
-  type        String   // INFO, SUCCESS, WARNING, BIRTH_ID
-  relatedId   String?  // ID de l'acte ou de la demande
-  isRead      Boolean  @default(false)
-  
-  createdAt   DateTime @default(now())
+  id        String  @id @default(uuid())
+  citizenId String
+  citizen   Citizen @relation(fields: [citizenId], references: [id])
+
+  title     String
+  content   String
+  type      String // INFO, SUCCESS, WARNING, BIRTH_ID
+  relatedId String? // ID de l'acte ou de la demande
+  isRead    Boolean @default(false)
+
+  createdAt DateTime @default(now())
 
   @@index([citizenId])
 }
@@ -37,35 +38,35 @@ enum Status {
 }
 
 model Agent {
-  id                    String   @id @default(uuid())
-  nationalAgentId       String   @unique
-  firstName             String
-  lastName              String
-  role                  Role     @default(AGENT)
-  status                Status   @default(ACTIVE)
-  prefectureAssignment  String
-  passwordHash          String
-  twoFactorSecret       String?  // Chiffré en AES-256
-  twoFactorEnabled      Boolean  @default(false)
-  lastLogin             DateTime?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String    @id @default(uuid())
+  nationalAgentId      String    @unique
+  firstName            String
+  lastName             String
+  role                 Role      @default(AGENT)
+  status               Status    @default(ACTIVE)
+  prefectureAssignment String
+  passwordHash         String
+  twoFactorSecret      String? // Chiffré en AES-256
+  twoFactorEnabled     Boolean   @default(false)
+  lastLogin            DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  births                Birth[]
-  requests              Request[]
+  births   Birth[]
+  requests Request[]
 }
 
 model Establishment {
-  id              String   @id @default(uuid())
-  code            String   @unique
-  name            String
-  type            String   // MATERNITY, HEALTH_POST, etc.
-  prefecture      String
-  subPrefecture   String
-  latitude        Float?
-  longitude       Float?
+  id            String @id @default(uuid())
+  code          String @unique
+  name          String
+  type          String // MATERNITY, HEALTH_POST, etc.
+  prefecture    String
+  subPrefecture String
+  latitude      Float?
+  longitude     Float?
 
-  births          Birth[]
+  births Birth[]
 }
 
 enum ValidationStatus {
@@ -74,17 +75,16 @@ enum ValidationStatus {
   REJECTED
 }
 
-
 model Birth {
-  id              String   @id @default(uuid())
-  nationalId      String   @unique // GN-AAAA-PREF-XXXXXXX
-  blockchainHash  String?  @unique
-  ipfsCid         String?  // PDF de l'acte
-  status          String   @default("PENDING_SYNC") // PENDING_SYNC, REGISTERED, FAILED
-  localId         String?  @unique
-  
+  id             String  @id @default(uuid())
+  nationalId     String  @unique // GN-AAAA-PREF-XXXXXXX
+  blockchainHash String? @unique
+  ipfsCid        String? // PDF de l'acte
+  status         String  @default("PENDING_SYNC") // PENDING_SYNC, REGISTERED, FAILED
+  localId        String? @unique
+
   // Enregistrement tardif
-  isLateRegistration Boolean @default(false)
+  isLateRegistration Boolean          @default(false)
   witness1FullName   String?
   witness1Cni        String? // Chiffré en AES-256
   witness2FullName   String?
@@ -92,38 +92,38 @@ model Birth {
   validationStatus   ValidationStatus @default(APPROVED)
 
   // Enfant
-  childFirstName  String
-  childLastName   String
-  childGender     String
-  dateOfBirth     DateTime
-  timeOfBirth     String?
-  placeOfBirth    String
+  childFirstName String
+  childLastName  String
+  childGender    String
+  dateOfBirth    DateTime
+  timeOfBirth    String?
+  placeOfBirth   String
 
   // Mère
-  motherFullName  String
-  motherDob       DateTime
-  motherCni       String?  // Chiffré en AES-256
+  motherFullName   String
+  motherDob        DateTime
+  motherCni        String? // Chiffré en AES-256
   motherPrefecture String
 
   // Père
-  fatherFullName  String?
-  fatherDob       DateTime?
-  fatherCni       String?  // Chiffré en AES-256
+  fatherFullName String?
+  fatherDob      DateTime?
+  fatherCni      String? // Chiffré en AES-256
 
   // Relation
-  agentId         String
-  agent           Agent          @relation(fields: [agentId], references: [id])
-  
-  establishmentId String
-  establishment   Establishment  @relation(fields: [establishmentId], references: [id])
-  
-  gpsCoordinates  String? // Point de saisie
+  agentId String
+  agent   Agent  @relation(fields: [agentId], references: [id])
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  verifications   Verification[]
-  request         Request?  // Relation inverse
+  establishmentId String
+  establishment   Establishment @relation(fields: [establishmentId], references: [id])
+
+  gpsCoordinates String? // Point de saisie
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  verifications Verification[]
+  request       Request? // Relation inverse
 
   @@index([nationalId])
   @@index([status])
@@ -132,13 +132,13 @@ model Birth {
 }
 
 model Verification {
-  id              String   @id @default(uuid())
-  birthId         String
-  birth           Birth    @relation(fields: [birthId], references: [id])
-  verifiedAt      DateTime @default(now())
-  ipAddress       String?
-  verifierType    String   // SCHOOL, HOSPITAL, COURT, PUBLIC
-  result          String   // VALID, INVALID
+  id           String   @id @default(uuid())
+  birthId      String
+  birth        Birth    @relation(fields: [birthId], references: [id])
+  verifiedAt   DateTime @default(now())
+  ipAddress    String?
+  verifierType String // SCHOOL, HOSPITAL, COURT, PUBLIC
+  result       String // VALID, INVALID
 }
 
 model Citizen {
@@ -151,7 +151,7 @@ model Citizen {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  requests     Request[]
+  requests      Request[]
   notifications Notification[]
 
   @@index([phoneNumber])
@@ -172,60 +172,60 @@ enum RequestType {
 }
 
 model Request {
-  id          String   @id @default(uuid())
-  citizenId   String
-  citizen     Citizen  @relation(fields: [citizenId], references: [id])
-  
-  type        RequestType
-  status      RequestStatus @default(PENDING)
-  
+  id        String  @id @default(uuid())
+  citizenId String
+  citizen   Citizen @relation(fields: [citizenId], references: [id])
+
+  type   RequestType
+  status RequestStatus @default(PENDING)
+
   // Pour demande de certificat
-  birthId         String?  @unique
-  birth           Birth?   @relation(fields: [birthId], references: [id])
+  birthId         String? @unique
+  birth           Birth?  @relation(fields: [birthId], references: [id])
   assignedAgentId String?
-  agent           Agent?    @relation(fields: [assignedAgentId], references: [id])
-  
+  agent           Agent?  @relation(fields: [assignedAgentId], references: [id])
+
   // Champs pour l'enregistrement complet de la naissance
-  childFirstName  String?
-  childLastName   String?
-  childGender     String?
-  birthDate       DateTime?
-  timeOfBirth     String?
-  placeOfBirth    String?
-  
-  motherFullName  String?
-  motherDob       DateTime?
-  motherCni       String?
+  childFirstName String?
+  childLastName  String?
+  childGender    String?
+  birthDate      DateTime?
+  timeOfBirth    String?
+  placeOfBirth   String?
+
+  motherFullName   String?
+  motherDob        DateTime?
+  motherCni        String?
   motherPrefecture String?
-  
-  fatherFullName  String?
-  fatherDob       DateTime?
-  fatherCni       String?
-  
+
+  fatherFullName String?
+  fatherDob      DateTime?
+  fatherCni      String?
+
   witness1FullName String?
   witness1Cni      String?
   witness2FullName String?
   witness2Cni      String?
-  
+
   isLateRegistration Boolean @default(false)
-  
+
   // Informations de livraison
-  deliveryMethod String @default("DIGITAL") // DIGITAL, PICKUP, MAIL
-  phoneNumber String?
-  email       String?
-  address     String?
-  
+  deliveryMethod String  @default("DIGITAL") // DIGITAL, PICKUP, MAIL
+  phoneNumber    String?
+  email          String?
+  address        String?
+
   // Documents requis (JSON)
-  documents   String? // JSON array de documents fournis
-  
+  documents String? // JSON array de documents fournis
+
   // Suivi
   notes       String?
   processedAt DateTime?
   processedBy String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([citizenId])
   @@index([status])
   @@index([createdAt])

@@ -21,7 +21,7 @@ exports.setup2FA = async (req, res, next) => {
   try {
     const agentId = req.user.id; // Injecté par authMiddleware
     const data = await authService.setup2FA(agentId);
-    
+
     res.status(200).json({
       status: 'success',
       message: 'Secret 2FA généré avec succès. Scannez le QR Code.',
@@ -36,13 +36,13 @@ exports.verify2FA = async (req, res, next) => {
   try {
     const agentId = req.user.id;
     const { token } = req.body;
-    
+
     if (!token) {
       return res.status(400).json({ status: 'error', message: 'Le code (token) est requis' });
     }
 
     await authService.verify2FA(agentId, token);
-    
+
     res.status(200).json({
       status: 'success',
       message: 'Authentification à deux facteurs activée avec succès'
@@ -55,7 +55,7 @@ exports.verify2FA = async (req, res, next) => {
 exports.register = async (req, res, next) => {
   try {
     const { nationalId, firstName, lastName, password, prefecture } = req.body;
-    
+
     if (!nationalId || !firstName || !lastName || !password) {
       return res.status(400).json({ status: 'error', message: 'Tous les champs sont requis' });
     }

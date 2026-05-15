@@ -17,7 +17,7 @@ if (/\r|\n|\s/.test(connectionString)) {
 console.log('📊 Connexion à PostgreSQL...');
 console.log('🔗 DATABASE_URL host:', connectionString.replace(/postgresql:\/\/(.*?):.*?@/, 'postgresql://$1:*****@'));
 
-const pool = new Pool({ 
+const pool = new Pool({
   connectionString,
   max: 100,
   idleTimeoutMillis: 30000,

@@ -17,6 +17,22 @@ exports.getKPIs = async (req, res) => {
   }
 };
 
+exports.getTrends = async (req, res) => {
+  try {
+    const trends = await dashboardService.getRegistrationTrends();
+    res.status(200).json({ 
+      status: 'success', 
+      data: trends 
+    });
+  } catch (error) {
+    console.error('Error in getTrends:', error);
+    res.status(500).json({ 
+      status: 'error', 
+      message: error.message 
+    });
+  }
+};
+
 exports.getAgents = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 50;
